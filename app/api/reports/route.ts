@@ -10,8 +10,6 @@ import { hashClientIdentifier, checkRateLimit } from "@/lib/security/rate-limit"
 import { verifyModerationSecret } from "@/lib/security/authorization";
 import { calculateReportStats } from "@/lib/aggregation/reports";
 import { eq, and, sql, desc, lt } from "drizzle-orm";
-import { OFFENCES } from "@/data/offences";
-import { SERVICES_SEED } from "@/data/services";
 
 const MAX_BODY_SIZE_BYTES = 10 * 1024; // 10 KB
 
@@ -181,18 +179,13 @@ export async function POST(req: NextRequest) {
     }
 
     let serviceRecord = null;
-    try {
-      const foundServices = await db
-        .select()
-        .from(services)
-        .where(and(eq(services.id, data.serviceId), eq(services.active, true)))
-        .limit(1);
+    const foundServices = await db
+      .select()
+      .from(services)
+      .where(and(eq(services.id, data.serviceId), eq(services.active, true)))
+      .limit(1);
 
-      serviceRecord = foundServices[0] || null;
-    } catch {
-      const staticMatch = SERVICES_SEED.find((s) => s.id === data.serviceId && s.active);
-      serviceRecord = staticMatch || null;
-    }
+    serviceRecord = foundServices[0] || null;
 
     if (!serviceRecord) {
       return jsonResponse(
@@ -204,62 +197,48 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    try {
-      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-      const existingDuplicates = await db
-        .select()
-        .from(reports)
-        .where(
-          and(
-            eq(reports.serviceId, data.serviceId),
-            eq(reports.amount, String(data.amount)),
-            eq(reports.city, data.city),
-            eq(reports.state, data.state),
-            eq(reports.incidentMonth, data.incidentMonth),
-            sql`${reports.createdAt} > ${fifteenMinutesAgo}`
-          )
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const existingDuplicates = await db
+      .select()
+      .from(reports)
+      .where(
+        and(
+          eq(reports.serviceId, data.serviceId),
+          eq(reports.amount, String(data.amount)),
+          eq(reports.city, data.city),
+          eq(reports.state, data.state),
+          eq(reports.incidentMonth, data.incidentMonth),
+          sql`${reports.createdAt} > ${fifteenMinutesAgo}`
         )
-        .limit(1);
+      )
+      .limit(1);
 
-      if (existingDuplicates.length > 0) {
-        return jsonResponse(
-          {
-            success: false,
-            error: "Duplicate submission detected. Please wait before re-submitting.",
-          },
-          409
-        );
-      }
-    } catch {
-      // Ignore duplicate check error if DB not ready
-    }
-
-    try {
-      const sourceRecordId = `user-${data.serviceId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      await db.insert(reports).values({
-        serviceId: data.serviceId,
-        amount: String(data.amount),
-        currency: "INR",
-        paid: data.paid,
-        paymentMode: data.paymentMode,
-        city: data.city,
-        state: data.state,
-        incidentMonth: data.incidentMonth,
-        officialRole: data.officialRole || null,
-        description: sanitizedDescription,
-        status: "pending",
-        source: "crowdsourced",
-        sourceRecordId,
-      });
-    } catch {
+    if (existingDuplicates.length > 0) {
       return jsonResponse(
         {
-          success: true,
-          message: "Report received and queued for moderation review.",
+          success: false,
+          error: "Duplicate submission detected. Please wait before re-submitting.",
         },
-        201
+        409
       );
     }
+
+    const sourceRecordId = `user-${data.serviceId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    await db.insert(reports).values({
+      serviceId: data.serviceId,
+      amount: String(data.amount),
+      currency: "INR",
+      paid: data.paid,
+      paymentMode: data.paymentMode,
+      city: data.city,
+      state: data.state,
+      incidentMonth: data.incidentMonth,
+      officialRole: data.officialRole || null,
+      description: sanitizedDescription,
+      status: "pending",
+      source: "crowdsourced",
+      sourceRecordId,
+    });
 
     return jsonResponse(
       {
@@ -309,42 +288,11 @@ export async function GET(req: NextRequest) {
 
     const { service, category, city, state, limit, cursor } = validationResult.data;
 
-    try {
-      if (service) {
-        return await handleSingleServiceQuery(service, city, state, limit, cursor);
-      }
-
-      return await handleAllServicesQuery(category, city, state);
-    } catch {
-      if (service) {
-        const matchedOffence = OFFENCES.find(
-          (o) => o.slug === service || o.id === service
-        );
-        if (matchedOffence) {
-          return jsonResponse({
-            success: true,
-            reports: [],
-            stats: {
-              typical: matchedOffence.reportedAmount.typical,
-              min: matchedOffence.reportedAmount.min,
-              max: matchedOffence.reportedAmount.max,
-              reportCount: matchedOffence.reports,
-              confidence: matchedOffence.confidence,
-              insufficientData: false,
-            },
-            initialEstimate: null,
-            service: null,
-            pagination: { nextCursor: null },
-          });
-        }
-      }
-
-      return jsonResponse({
-        success: true,
-        serviceStats: {},
-        pagination: { nextCursor: null },
-      });
+    if (service) {
+      return await handleSingleServiceQuery(service, city, state, limit, cursor);
     }
+
+    return await handleAllServicesQuery(category, city, state);
   } catch (error) {
     console.error("GET /api/reports internal error:", error);
     return jsonResponse(
@@ -644,24 +592,20 @@ export async function PATCH(req: NextRequest) {
     const { reportId, action } = validationResult.data;
     const newStatus = action === "approve" ? "approved" : "rejected";
 
-    try {
-      const updated = await db
-        .update(reports)
-        .set({
-          status: newStatus,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(reports.id, reportId))
-        .returning();
+    const updated = await db
+      .update(reports)
+      .set({
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(reports.id, reportId))
+      .returning();
 
-      if (updated.length === 0) {
-        return jsonResponse(
-          { success: false, error: "Report not found." },
-          404
-        );
-      }
-    } catch {
-      // Mock success if DB not connected
+    if (updated.length === 0) {
+      return jsonResponse(
+        { success: false, error: "Report not found." },
+        404
+      );
     }
 
     return jsonResponse({
