@@ -36,7 +36,7 @@ export const reportSubmissionSchema = z
     paid: z.boolean({ message: "paid status is required." }),
 
     paymentMode: z.enum(PAYMENT_MODES, {
-      errorMap: () => ({ message: "Invalid payment mode." }),
+      message: "Invalid payment mode.",
     }),
 
     city: z
@@ -46,7 +46,7 @@ export const reportSubmissionSchema = z
       .transform((val) => sanitizeString(val)),
 
     state: z.enum(INDIAN_STATES, {
-      errorMap: () => ({ message: "Invalid Indian state or union territory." }),
+      message: "Invalid Indian state or union territory.",
     }),
 
     incidentMonth: z

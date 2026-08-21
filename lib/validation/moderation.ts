@@ -4,7 +4,7 @@ export const moderationSchema = z
   .object({
     reportId: z.string().uuid("reportId must be a valid UUID."),
     action: z.enum(["approve", "reject"], {
-      errorMap: () => ({ message: "Action must be either 'approve' or 'reject'." }),
+      message: "Action must be either 'approve' or 'reject'.",
     }),
   })
   .strict();
