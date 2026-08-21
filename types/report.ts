@@ -4,7 +4,8 @@ export type PaymentMode =
   | "bank_transfer"
   | "agent"
   | "other"
-  | "not_paid";
+  | "not_paid"
+  | "unknown";
 
 export type OfficialRole =
   | "Traffic Police"
@@ -18,6 +19,22 @@ export type OfficialRole =
   | "Not sure";
 
 export type ReportStatus = "pending" | "approved" | "rejected";
+
+export type SourceType =
+  | "documented_case"
+  | "historical"
+  | "news"
+  | "public_report"
+  | "crowdsourced";
+
+export type EvidenceConfidence = "high" | "medium" | "low";
+
+export type AmountType = "demanded" | "paid" | "accepted" | "reported";
+
+export type EstimationMethodology =
+  | "single_observation"
+  | "median_of_observations"
+  | "editorial_estimate";
 
 export const INDIAN_STATES = [
   "Andaman and Nicobar Islands",
@@ -101,4 +118,40 @@ export interface ReportStats {
 export interface ModerationActionInput {
   reportId: string;
   action: "approve" | "reject";
+}
+
+export interface SeedReport {
+  id: string;
+  sourceRecordId: string;
+  serviceId: string;
+  serviceSlug: string;
+  amount: number;
+  demandedAmount?: number;
+  amountType: AmountType;
+  currency: "INR";
+  paid: boolean;
+  paymentMode: PaymentMode;
+  city: string;
+  state: IndianState;
+  incidentMonth?: string;
+  officialRole?: string;
+  description?: string;
+  sourceType: SourceType;
+  sourceName: string;
+  sourceUrl: string;
+  sourceDate?: string;
+  evidenceConfidence: EvidenceConfidence;
+  notes?: string;
+}
+
+export interface ServiceInitialEstimate {
+  serviceId: string;
+  serviceSlug: string;
+  serviceName: string;
+  amount: number;
+  minAmount: number;
+  maxAmount: number;
+  methodology: EstimationMethodology;
+  confidence: EvidenceConfidence;
+  observationCount: number;
 }
