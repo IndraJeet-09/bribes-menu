@@ -7,6 +7,7 @@ import { Category, Offence } from "@/types/offence";
 import { SearchBar } from "@/components/SearchBar";
 import { CategoryTabs } from "@/components/CategoryTabs";
 import { OffenceGrid } from "@/components/OffenceGrid";
+import { ReportCTA } from "@/components/ReportCTA";
 import { searchOffences } from "@/lib/search";
 import { ArrowRight, Sparkles } from "lucide-react";
 
@@ -148,6 +149,11 @@ export default function HomePage() {
       {/* Offence Grid */}
       <div className="py-4">
         <OffenceGrid offences={filteredOffences} onReset={handleReset} />
+      </div>
+
+      {/* Report CTA Banner */}
+      <div className="mt-12">
+        <ReportCTA />
       </div>
 
       {/* Editorial Footer Quote / Stat Banner */}
