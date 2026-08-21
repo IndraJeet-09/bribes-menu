@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { db } from "./index";
 import { categories, services } from "./schema";
 import { CATEGORIES_SEED } from "../../data/categories";
