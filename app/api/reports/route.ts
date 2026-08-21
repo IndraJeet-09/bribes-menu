@@ -5,11 +5,13 @@ import { reportSubmissionSchema } from "@/lib/validation/report";
 import { reportQuerySchema } from "@/lib/validation/query";
 import { moderationSchema } from "@/lib/validation/moderation";
 import { detectPIIAndSpam } from "@/lib/security/detect-pii";
+import { sanitizeString } from "@/lib/security/sanitize";
 import { hashClientIdentifier, checkRateLimit } from "@/lib/security/rate-limit";
 import { verifyModerationSecret } from "@/lib/security/authorization";
 import { calculateReportStats } from "@/lib/aggregation/reports";
 import { eq, and, sql, desc, lt } from "drizzle-orm";
 import { OFFENCES } from "@/data/offences";
+import { SERVICES_SEED } from "@/data/services";
 
 const MAX_BODY_SIZE_BYTES = 10 * 1024; // 10 KB
 
@@ -97,6 +99,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Sanitize string text fields
+    const sanitizedDescription = data.description ? sanitizeString(data.description) : null;
+
     // 6. Rate Limiting Check
     const clientIp = getClientIp(req);
     const hashedId = hashClientIdentifier(clientIp);
@@ -124,8 +129,9 @@ export async function POST(req: NextRequest) {
 
       serviceRecord = foundServices[0] || null;
     } catch {
-      // In case DB is not yet seeded, check fallback local static services
-      serviceRecord = { id: data.serviceId };
+      // In case DB is not yet seeded/connected, check fallback static seed services list
+      const staticMatch = SERVICES_SEED.find((s) => s.id === data.serviceId && s.active);
+      serviceRecord = staticMatch || null;
     }
 
     if (!serviceRecord) {
@@ -165,8 +171,8 @@ export async function POST(req: NextRequest) {
           409
         );
       }
-    } catch {
-      // Ignore duplicate check error if DB not ready
+    } catch (dbErr) {
+      // Ignore duplicate check error if DB not ready or offline
     }
 
     // 9. Database Insert (Parameterized via Drizzle)
@@ -181,7 +187,7 @@ export async function POST(req: NextRequest) {
         state: data.state,
         incidentMonth: data.incidentMonth,
         officialRole: data.officialRole || null,
-        description: data.description || null,
+        description: sanitizedDescription,
         status: "pending",
         source: "crowdsourced",
       });
