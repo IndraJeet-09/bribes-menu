@@ -6,6 +6,7 @@ import { formatINR } from "@/lib/utils";
 import { AmountVisualizer } from "@/components/AmountVisualizer";
 import { ShareButton } from "@/components/ShareButton";
 import { OffenceCard } from "@/components/OffenceCard";
+import { ReportCTA } from "@/components/ReportCTA";
 import {
   ArrowLeft,
   MapPin,
@@ -210,6 +211,9 @@ export default async function OffenceDetailPage({ params }: Props) {
           </p>
         </div>
       )}
+
+      {/* Report CTA Banner */}
+      <ReportCTA defaultServiceId={offence.id} />
 
       {/* Common Aliases & Keywords */}
       <div className="pt-4 border-t border-border/80">
