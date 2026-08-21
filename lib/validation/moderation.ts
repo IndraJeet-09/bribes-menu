@@ -2,9 +2,7 @@ import { z } from "zod";
 
 export const moderationSchema = z
   .object({
-    reportId: z
-      .string({ required_error: "reportId is required." })
-      .uuid({ message: "reportId must be a valid UUID." }),
+    reportId: z.string().uuid("reportId must be a valid UUID."),
     action: z.enum(["approve", "reject"], {
       errorMap: () => ({ message: "Action must be either 'approve' or 'reject'." }),
     }),

@@ -25,37 +25,33 @@ const PAYMENT_MODES = [
 
 export const reportSubmissionSchema = z
   .object({
-    serviceId: z
-      .string({ required_error: "serviceId is required." })
-      .uuid({ message: "serviceId must be a valid UUID." }),
+    serviceId: z.string().uuid("serviceId must be a valid UUID."),
 
     amount: z
-      .number({ required_error: "amount is required." })
-      .finite({ message: "amount must be a finite number." })
-      .positive({ message: "amount must be greater than 0." })
-      .max(1_000_000, { message: "amount cannot exceed ₹10,00,000." }),
+      .number({ message: "amount is required and must be a number." })
+      .finite("amount must be a finite number.")
+      .positive("amount must be greater than 0.")
+      .max(1_000_000, "amount cannot exceed ₹10,00,000."),
 
-    paid: z.boolean({ required_error: "paid status is required." }),
+    paid: z.boolean({ message: "paid status is required." }),
 
     paymentMode: z.enum(PAYMENT_MODES, {
       errorMap: () => ({ message: "Invalid payment mode." }),
     }),
 
     city: z
-      .string({ required_error: "city is required." })
-      .min(2, { message: "city name must be at least 2 characters." })
-      .max(100, { message: "city name cannot exceed 100 characters." })
-      .transform(sanitizeString),
+      .string()
+      .min(2, "city name must be at least 2 characters.")
+      .max(100, "city name cannot exceed 100 characters.")
+      .transform((val) => sanitizeString(val)),
 
     state: z.enum(INDIAN_STATES, {
       errorMap: () => ({ message: "Invalid Indian state or union territory." }),
     }),
 
     incidentMonth: z
-      .string({ required_error: "incidentMonth is required." })
-      .regex(/^\d{4}-(0[1-9]|1[0-2])$/, {
-        message: "incidentMonth must be in YYYY-MM format (e.g. 2026-08).",
-      })
+      .string()
+      .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "incidentMonth must be in YYYY-MM format (e.g. 2026-08).")
       .refine(
         (val) => {
           const [yearStr, monthStr] = val.split("-");
@@ -82,9 +78,8 @@ export const reportSubmissionSchema = z
 
     description: z
       .string()
-      .min(10, { message: "description must be at least 10 characters if provided." })
-      .max(500, { message: "description cannot exceed 500 characters." })
-      .transform(sanitizeString)
+      .min(10, "description must be at least 10 characters if provided.")
+      .max(500, "description cannot exceed 500 characters.")
       .optional()
       .nullable(),
   })
