@@ -1,8 +1,9 @@
 import { Offence } from "@/types/offence";
+import { EnrichedOffence } from "@/lib/data/enriched-offences";
 import { OffenceCard } from "@/components/OffenceCard";
 
 interface OffenceGridProps {
-  offences: Offence[];
+  offences: Offence[] | EnrichedOffence[];
   onReset?: () => void;
 }
 

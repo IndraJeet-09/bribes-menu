@@ -9,13 +9,23 @@ import { CategoryTabs } from "@/components/CategoryTabs";
 import { OffenceGrid } from "@/components/OffenceGrid";
 import { ReportCTA } from "@/components/ReportCTA";
 import { searchOffences } from "@/lib/search";
+import { useEnrichedOffences } from "@/lib/data/enriched-offences";
 import { ArrowRight, Sparkles } from "lucide-react";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<Category | "all">("all");
 
-  // Compute category counts
+  const { enriched, isLoading } = useEnrichedOffences(OFFENCES);
+
+  const enrichedMap = useMemo(() => {
+    const map = new Map<string, (typeof enriched)[0]>();
+    for (const e of enriched) {
+      map.set(e.slug, e);
+    }
+    return map;
+  }, [enriched]);
+
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const offence of OFFENCES) {
@@ -24,12 +34,11 @@ export default function HomePage() {
     return counts;
   }, []);
 
-  // Filter offences by search and category
   const filteredOffences = useMemo(() => {
-    let list = OFFENCES;
+    let list: Offence[] = enriched;
 
     if (searchQuery.trim()) {
-      list = searchOffences(OFFENCES, searchQuery);
+      list = searchOffences(enriched, searchQuery);
     }
 
     if (selectedCategory !== "all") {
@@ -37,7 +46,7 @@ export default function HomePage() {
     }
 
     return list;
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory, enriched]);
 
   const handleSearchChange = (query: string, results: Offence[]) => {
     setSearchQuery(query);
@@ -52,13 +61,11 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
       {/* Editorial Hero Section */}
       <div className="text-center max-w-3xl mx-auto space-y-6 pb-10 sm:pb-14">
-        {/* Subtle Edition Tag */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-surface text-muted font-mono text-[11px] uppercase tracking-widest">
           <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
           <span>INDIA UNREDACTED · 2026 EDITION</span>
         </div>
 
-        {/* High Character Editorial Headline */}
         <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight text-foreground leading-[0.95] uppercase">
           THE
           <br />
@@ -67,7 +74,6 @@ export default function HomePage() {
           FINE MENU
         </h1>
 
-        {/* Subtitle */}
         <p className="font-sans text-lg sm:text-2xl text-muted font-normal max-w-xl mx-auto leading-snug">
           You know what you did.
           <br />
@@ -76,19 +82,18 @@ export default function HomePage() {
           </span>
         </p>
 
-        {/* Prominent Search Bar */}
         <div className="pt-4">
           <SearchBar
             initialQuery={searchQuery}
             onSearchChange={handleSearchChange}
             showDropdown={true}
             showPopularSearches={true}
+            enrichedMap={enrichedMap}
           />
         </div>
 
-        {/* Sub-search microcopy */}
         <p className="font-mono text-xs text-muted pt-1">
-          {OFFENCES.length} things you probably shouldn't have done.
+          {OFFENCES.length} things you probably shouldn&apos;t have done.
         </p>
       </div>
 
@@ -132,7 +137,7 @@ export default function HomePage() {
             )}
             {searchQuery && (
               <span className="bg-neutral-100 px-2 py-0.5 rounded text-[11px]">
-                Query: "{searchQuery}"
+                Query: &quot;{searchQuery}&quot;
               </span>
             )}
           </div>
@@ -163,7 +168,7 @@ export default function HomePage() {
             THE STREET PROTOCOL
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground mt-2">
-            "Unfortunately, there is no printed tariff card on the dashboard."
+            &ldquo;Unfortunately, there is no printed tariff card on the dashboard.&rdquo;
           </h2>
           <p className="font-sans text-xs sm:text-sm text-muted mt-2 leading-relaxed">
             Data aggregated from public disclosures, community accounts, and real-world urban narratives across Indian metros. 
