@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, ArrowUpRight, CornerDownLeft } from "lucide-react";
 import { Offence } from "@/types/offence";
+import { EnrichedOffence } from "@/lib/data/enriched-offences";
 import { searchOffences } from "@/lib/search";
 import { OFFENCES } from "@/data/offences";
 import { formatINR } from "@/lib/utils";
@@ -16,6 +17,7 @@ interface SearchBarProps {
   showPopularSearches?: boolean;
   autoFocus?: boolean;
   placeholder?: string;
+  enrichedMap?: Map<string, EnrichedOffence>;
 }
 
 export function SearchBar({
@@ -25,6 +27,7 @@ export function SearchBar({
   showPopularSearches = true,
   autoFocus = false,
   placeholder = "Search an offence, violation or situation (e.g. helmet, licence, tax, speed)...",
+  enrichedMap,
 }: SearchBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -34,7 +37,6 @@ export function SearchBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Sync initial query
   useEffect(() => {
     if (initialQuery !== undefined) {
       setQuery(initialQuery);
@@ -45,7 +47,6 @@ export function SearchBar({
     }
   }, [initialQuery]);
 
-  // Handle keystroke searching
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
@@ -81,7 +82,6 @@ export function SearchBar({
     onSearchChange?.("", OFFENCES);
   };
 
-  // Keyboard navigation: Arrow Up, Arrow Down, Enter, Escape
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") {
       setIsOpen(false);
@@ -91,7 +91,6 @@ export function SearchBar({
 
     if (!isOpen || results.length === 0) {
       if (e.key === "Enter" && query.trim()) {
-        // If pressed Enter without dropdown open, navigate to browse with search param
         router.push(`/browse?q=${encodeURIComponent(query.trim())}`);
       }
       return;
@@ -116,7 +115,6 @@ export function SearchBar({
     }
   };
 
-  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -133,7 +131,6 @@ export function SearchBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Keyboard shortcut '/' to focus search
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (
@@ -152,7 +149,6 @@ export function SearchBar({
 
   return (
     <div className="relative w-full max-w-3xl mx-auto">
-      {/* Search Input Box */}
       <div className="group relative flex items-center w-full rounded-xl border-2 border-foreground/80 bg-surface px-4 py-3 sm:py-3.5 shadow-sm transition-all focus-within:border-black focus-within:ring-4 focus-within:ring-black/5">
         <Search className="h-5 w-5 text-muted-dark shrink-0 mr-3 transition-colors group-focus-within:text-black" />
         
@@ -188,12 +184,10 @@ export function SearchBar({
         )}
       </div>
 
-      {/* Popular Searches when empty */}
       {showPopularSearches && !query && (
         <PopularSearches onSelect={handleSelectPopular} />
       )}
 
-      {/* Live Search Results Dropdown */}
       {showDropdown && isOpen && query.trim() !== "" && (
         <div
           ref={dropdownRef}
@@ -209,6 +203,12 @@ export function SearchBar({
               <ul className="max-h-[380px] overflow-y-auto divide-y divide-border/60">
                 {results.slice(0, 7).map((item, index) => {
                   const isSelected = index === selectedIndex;
+                  const enriched = enrichedMap?.get(item.slug);
+                  const typical = enriched?.dbTypical ?? item.reportedAmount.typical;
+                  const min = enriched?.dbMin ?? item.reportedAmount.min;
+                  const max = enriched?.dbMax ?? item.reportedAmount.max;
+                  const reportCount = enriched?.dbReportCount ?? item.reports;
+
                   return (
                     <li key={item.id}>
                       <button
@@ -229,7 +229,7 @@ export function SearchBar({
                             </span>
                             <span className="text-[10px] text-muted/60">·</span>
                             <span className="font-mono text-[10px] text-muted">
-                              {item.reports} reports
+                              {reportCount} reports
                             </span>
                           </div>
                           <div className="font-serif text-lg font-bold text-foreground mt-0.5">
@@ -242,10 +242,10 @@ export function SearchBar({
 
                         <div className="text-right shrink-0">
                           <div className="font-serif text-lg font-bold text-foreground">
-                            {formatINR(item.reportedAmount.typical)}
+                            {formatINR(typical)}
                           </div>
                           <div className="font-mono text-[10px] text-muted">
-                            {formatINR(item.reportedAmount.min)} — {formatINR(item.reportedAmount.max)}
+                            {formatINR(min)} — {formatINR(max)}
                           </div>
                         </div>
                       </button>
@@ -271,13 +271,12 @@ export function SearchBar({
               )}
             </div>
           ) : (
-            /* Sarcastic Empty State */
             <div className="p-8 text-center">
               <div className="font-serif text-xl font-bold text-foreground mb-1">
                 Nothing found.
               </div>
               <p className="font-sans text-sm text-muted max-w-sm mx-auto leading-relaxed">
-                Either you're completely innocent, or we haven't documented your particular predicament yet.
+                Either you&apos;re completely innocent, or we haven&apos;t documented your particular predicament yet.
               </p>
               <div className="mt-4">
                 <button

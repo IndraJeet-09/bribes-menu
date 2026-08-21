@@ -144,7 +144,7 @@ export const initialEstimates = pgTable(
     maxAmount: numeric("max_amount", { precision: 12, scale: 2 }),
     methodology: estimationMethodologyEnum("methodology").notNull(),
     confidence: evidenceConfidenceEnum("confidence").notNull(),
-    observationCount: numeric("observation_count").notNull().default(0),
+    observationCount: numeric("observation_count").notNull().default("0"),
     calculatedAt: timestamp("calculated_at", { mode: "string" })
       .defaultNow()
       .notNull(),

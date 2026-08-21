@@ -7,6 +7,7 @@ import { Category, Offence } from "@/types/offence";
 import { SearchBar } from "@/components/SearchBar";
 import { OffenceGrid } from "@/components/OffenceGrid";
 import { searchOffences } from "@/lib/search";
+import { useEnrichedOffences } from "@/lib/data/enriched-offences";
 import { ArrowUpDown, SlidersHorizontal, RotateCcw } from "lucide-react";
 
 type SortOption = "reports-desc" | "amount-desc" | "amount-asc" | "title-asc" | "date-desc";
@@ -22,7 +23,16 @@ function BrowseContent() {
   const [selectedCategory, setSelectedCategory] = useState<Category | "all">(initialCategory);
   const [sortBy, setSortBy] = useState<SortOption>("reports-desc");
 
-  // Sync state with URL params
+  const { enriched } = useEnrichedOffences(OFFENCES);
+
+  const enrichedMap = useMemo(() => {
+    const map = new Map<string, (typeof enriched)[0]>();
+    for (const e of enriched) {
+      map.set(e.slug, e);
+    }
+    return map;
+  }, [enriched]);
+
   useEffect(() => {
     const q = searchParams.get("q") || "";
     const cat = (searchParams.get("category") as Category | "all") || "all";
@@ -30,7 +40,6 @@ function BrowseContent() {
     setSelectedCategory(cat);
   }, [searchParams]);
 
-  // Compute category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const offence of OFFENCES) {
@@ -39,29 +48,27 @@ function BrowseContent() {
     return counts;
   }, []);
 
-  // Filter and sort offences
   const processedOffences = useMemo(() => {
-    let list = OFFENCES;
+    let list = [...enriched];
 
     if (query.trim()) {
-      list = searchOffences(OFFENCES, query);
+      list = searchOffences(enriched, query) as typeof enriched;
     }
 
     if (selectedCategory !== "all") {
       list = list.filter((item) => item.category === selectedCategory);
     }
 
-    // Apply sorting
     const sorted = [...list];
     switch (sortBy) {
       case "amount-desc":
-        sorted.sort((a, b) => b.reportedAmount.typical - a.reportedAmount.typical);
+        sorted.sort((a, b) => b.dbTypical - a.dbTypical);
         break;
       case "amount-asc":
-        sorted.sort((a, b) => a.reportedAmount.typical - b.reportedAmount.typical);
+        sorted.sort((a, b) => a.dbTypical - b.dbTypical);
         break;
       case "reports-desc":
-        sorted.sort((a, b) => b.reports - a.reports);
+        sorted.sort((a, b) => b.dbReportCount - a.dbReportCount);
         break;
       case "title-asc":
         sorted.sort((a, b) => a.title.localeCompare(b.title));
@@ -74,7 +81,7 @@ function BrowseContent() {
     }
 
     return sorted;
-  }, [query, selectedCategory, sortBy]);
+  }, [query, selectedCategory, sortBy, enriched]);
 
   const handleCategoryChange = (cat: Category | "all") => {
     setSelectedCategory(cat);
@@ -116,7 +123,7 @@ function BrowseContent() {
           Browse All Reported Situations
         </h1>
         <p className="font-sans text-sm sm:text-base text-muted max-w-2xl">
-          Search across 25 documented offences, administrative bottlenecks, and roadside encounters with reported crowd estimates.
+          Search across {OFFENCES.length} documented offences, administrative bottlenecks, and roadside encounters with reported crowd estimates.
         </p>
       </div>
 
@@ -128,6 +135,7 @@ function BrowseContent() {
           showDropdown={false}
           showPopularSearches={false}
           placeholder="Filter directory by offence, keywords, or context..."
+          enrichedMap={enrichedMap}
         />
       </div>
 
@@ -205,7 +213,7 @@ function BrowseContent() {
         </span>
         {query && (
           <span>
-            MATCHING QUERY: <strong className="text-foreground">"{query}"</strong>
+            MATCHING QUERY: <strong className="text-foreground">&quot;{query}&quot;</strong>
           </span>
         )}
       </div>

@@ -1,14 +1,24 @@
 import Link from "next/link";
 import { Offence } from "@/types/offence";
+import { EnrichedOffence } from "@/lib/data/enriched-offences";
 import { formatINR } from "@/lib/utils";
 import { ArrowUpRight } from "lucide-react";
 
 interface OffenceCardProps {
-  offence: Offence;
+  offence: Offence | EnrichedOffence;
 }
 
 export function OffenceCard({ offence }: OffenceCardProps) {
-  const { slug, title, category, reportedAmount, reports, location } = offence;
+  const { slug, title, category, location } = offence;
+
+  const typical =
+    "dbTypical" in offence ? offence.dbTypical : offence.reportedAmount.typical;
+  const min =
+    "dbMin" in offence ? offence.dbMin : offence.reportedAmount.min;
+  const max =
+    "dbMax" in offence ? offence.dbMax : offence.reportedAmount.max;
+  const reportCount =
+    "dbReportCount" in offence ? offence.dbReportCount : offence.reports;
 
   return (
     <Link
@@ -33,7 +43,7 @@ export function OffenceCard({ offence }: OffenceCardProps) {
 
         {/* Humorous snippet */}
         <p className="font-sans text-xs text-muted mt-2 line-clamp-2 italic">
-          "{offence.humorousQuote}"
+          &ldquo;{offence.humorousQuote}&rdquo;
         </p>
       </div>
 
@@ -42,7 +52,7 @@ export function OffenceCard({ offence }: OffenceCardProps) {
         <div className="flex items-baseline justify-between gap-2">
           <div>
             <div className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {formatINR(reportedAmount.typical)}
+              {formatINR(typical)}
             </div>
             <div className="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">
               TYPICAL REPORTED
@@ -51,7 +61,7 @@ export function OffenceCard({ offence }: OffenceCardProps) {
 
           <div className="text-right">
             <div className="font-mono text-xs font-medium text-muted-dark">
-              {formatINR(reportedAmount.min)} — {formatINR(reportedAmount.max)}
+              {formatINR(min)} — {formatINR(max)}
             </div>
             <div className="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">
               REPORTED RANGE
@@ -61,7 +71,7 @@ export function OffenceCard({ offence }: OffenceCardProps) {
 
         {/* Footer info: Reports & Location */}
         <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/40 font-mono text-[11px] text-muted">
-          <span>{reports} reports</span>
+          <span>{reportCount} reports</span>
           {location && location.length > 0 && (
             <span className="truncate max-w-[180px] sm:max-w-[200px] text-right">
               {location.slice(0, 2).join(" · ")}

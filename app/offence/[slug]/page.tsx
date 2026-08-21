@@ -7,6 +7,8 @@ import { AmountVisualizer } from "@/components/AmountVisualizer";
 import { ShareButton } from "@/components/ShareButton";
 import { OffenceCard } from "@/components/OffenceCard";
 import { ReportCTA } from "@/components/ReportCTA";
+import { getServiceSlugForOffence } from "@/lib/data/service-mapping";
+import { fetchServiceDbData } from "@/lib/data/server-data";
 import {
   ArrowLeft,
   MapPin,
@@ -56,16 +58,23 @@ export default async function OffenceDetailPage({ params }: Props) {
     category,
     description,
     humorousQuote,
-    reportedAmount,
-    reports,
-    confidence,
+    aliases,
     location,
     lastUpdated,
     tipsOrContext,
-    aliases,
   } = offence;
 
-  // Find related offences in the same category (or other categories if fewer than 2)
+  const serviceSlug = getServiceSlugForOffence(slug);
+  const dbData = serviceSlug ? await fetchServiceDbData(serviceSlug) : null;
+
+  const typical = dbData?.stats.typical ?? offence.reportedAmount.typical;
+  const min = dbData?.stats.min ?? offence.reportedAmount.min;
+  const max = dbData?.stats.max ?? offence.reportedAmount.max;
+  const reportCount = dbData?.stats.reportCount ?? offence.reports;
+  const confidence = dbData?.stats.confidence ?? offence.confidence;
+
+  const reportedAmountForViz = { min, max, typical, currency: "INR" as const };
+
   const relatedOffences = OFFENCES.filter(
     (o) => o.id !== offence.id && (o.category === offence.category || true)
   ).slice(0, 3);
@@ -111,7 +120,7 @@ export default async function OffenceDetailPage({ params }: Props) {
         {/* Humorous Quote Callout */}
         <div className="relative border-l-2 border-foreground pl-4 py-2 my-4 bg-surface/50 rounded-r-lg">
           <p className="font-serif text-lg sm:text-xl italic text-foreground leading-snug">
-            "{humorousQuote}"
+            &ldquo;{humorousQuote}&rdquo;
           </p>
         </div>
       </div>
@@ -124,10 +133,12 @@ export default async function OffenceDetailPage({ params }: Props) {
               TYPICAL REPORTED AMOUNT
             </span>
             <div className="font-serif text-5xl sm:text-7xl font-bold tracking-tight text-foreground">
-              {formatINR(reportedAmount.typical)}
+              {formatINR(typical)}
             </div>
             <div className="font-mono text-xs text-muted mt-1">
-              Crowdsourced median from {reports} verified anecdotes
+              {dbData
+                ? `Based on ${reportCount} approved report${reportCount === 1 ? "" : "s"}`
+                : `Crowdsourced median from ${reportCount} verified anecdotes`}
             </div>
           </div>
 
@@ -136,7 +147,7 @@ export default async function OffenceDetailPage({ params }: Props) {
               REPORTED RANGE
             </span>
             <div className="text-xl sm:text-2xl font-bold text-muted-dark">
-              {formatINR(reportedAmount.min)} — {formatINR(reportedAmount.max)}
+              {formatINR(min)} — {formatINR(max)}
             </div>
             <div className="text-[11px] text-muted mt-0.5">
               Subject to location & negotiation
@@ -146,7 +157,7 @@ export default async function OffenceDetailPage({ params }: Props) {
 
         {/* Range Visualizer Distribution */}
         <div>
-          <AmountVisualizer reportedAmount={reportedAmount} />
+          <AmountVisualizer reportedAmount={reportedAmountForViz} />
         </div>
       </div>
 
@@ -159,7 +170,7 @@ export default async function OffenceDetailPage({ params }: Props) {
             <span>SAMPLE VOLUME</span>
           </div>
           <div className="font-serif text-2xl font-bold text-foreground">
-            {reports} reports
+            {reportCount} reports
           </div>
           <div className="font-mono text-[10px] text-muted">
             Confidence: <span className="uppercase font-semibold text-foreground">{confidence}</span>
@@ -213,7 +224,7 @@ export default async function OffenceDetailPage({ params }: Props) {
       )}
 
       {/* Report CTA Banner */}
-      <ReportCTA defaultServiceId={offence.id} />
+      <ReportCTA defaultServiceId={dbData?.service.id ?? offence.id} />
 
       {/* Common Aliases & Keywords */}
       <div className="pt-4 border-t border-border/80">

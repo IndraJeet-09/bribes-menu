@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { reports, services, categories } from "@/lib/db/schema";
+import { reports, services, categories, initialEstimates } from "@/lib/db/schema";
 import { reportSubmissionSchema } from "@/lib/validation/report";
 import { reportQuerySchema } from "@/lib/validation/query";
 import { moderationSchema } from "@/lib/validation/moderation";
@@ -15,12 +15,10 @@ import { SERVICES_SEED } from "@/data/services";
 
 const MAX_BODY_SIZE_BYTES = 10 * 1024; // 10 KB
 
-// Helper for clean JSON responses
 function jsonResponse(data: unknown, status = 200, headers?: Record<string, string>) {
   return NextResponse.json(data, { status, headers });
 }
 
-// Helper to extract client IP safely
 function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) {
@@ -34,12 +32,82 @@ function getClientIp(req: NextRequest): string {
 }
 
 /**
+ * Merge initial estimate data with approved report statistics.
+ * Initial estimate is the starting value; reports refine it.
+ */
+function mergeEstimateWithReportStats(
+  initialEstimate: {
+    amount: { toString(): string };
+    minAmount?: { toString(): string } | null;
+    maxAmount?: { toString(): string } | null;
+    confidence: string;
+  } | null,
+  reportStats: {
+    medianAmount: number;
+    minAmount: number;
+    maxAmount: number;
+    reportCount: number;
+    insufficientData?: boolean;
+  }
+): {
+  typical: number;
+  min: number;
+  max: number;
+  reportCount: number;
+  confidence: string;
+  insufficientData: boolean;
+} {
+  if (!initialEstimate) {
+    return {
+      typical: reportStats.medianAmount,
+      min: reportStats.minAmount,
+      max: reportStats.maxAmount,
+      reportCount: reportStats.reportCount,
+      confidence: "low",
+      insufficientData: reportStats.insufficientData ?? true,
+    };
+  }
+
+  const estAmount = parseFloat(String(initialEstimate.amount));
+  const estMin = initialEstimate.minAmount
+    ? parseFloat(String(initialEstimate.minAmount))
+    : estAmount;
+  const estMax = initialEstimate.maxAmount
+    ? parseFloat(String(initialEstimate.maxAmount))
+    : estAmount;
+
+  if (reportStats.reportCount === 0) {
+    return {
+      typical: estAmount,
+      min: estMin,
+      max: estMax,
+      reportCount: 0,
+      confidence: initialEstimate.confidence,
+      insufficientData: true,
+    };
+  }
+
+  const typical = reportStats.medianAmount > 0 ? reportStats.medianAmount : estAmount;
+  const min = Math.min(estMin, reportStats.minAmount);
+  const max = Math.max(estMax, reportStats.maxAmount);
+  const totalReports = reportStats.reportCount;
+
+  return {
+    typical,
+    min,
+    max,
+    reportCount: totalReports,
+    confidence: initialEstimate.confidence,
+    insufficientData: totalReports < 3,
+  };
+}
+
+/**
  * POST /api/reports
  * Submit a new anonymous report.
  */
 export async function POST(req: NextRequest) {
   try {
-    // 1. Content-Type Check
     const contentType = req.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
       return jsonResponse(
@@ -48,7 +116,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Request Body Size Check
     const rawBody = await req.text();
     if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_SIZE_BYTES) {
       return jsonResponse(
@@ -57,7 +124,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. JSON Parsing
     let bodyJson: unknown;
     try {
       bodyJson = JSON.parse(rawBody);
@@ -68,7 +134,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Zod Schema Validation
     const validationResult = reportSubmissionSchema.safeParse(bodyJson);
     if (!validationResult.success) {
       const issue = validationResult.error.issues[0];
@@ -84,7 +149,6 @@ export async function POST(req: NextRequest) {
 
     const data = validationResult.data;
 
-    // 5. PII & Suspicious Content Inspection
     if (data.description) {
       const piiCheck = detectPIIAndSpam(data.description);
       if (piiCheck.hasPIIOrSuspicious) {
@@ -99,10 +163,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Sanitize string text fields
     const sanitizedDescription = data.description ? sanitizeString(data.description) : null;
 
-    // 6. Rate Limiting Check
     const clientIp = getClientIp(req);
     const hashedId = hashClientIdentifier(clientIp);
     const rateLimit = checkRateLimit(hashedId);
@@ -118,7 +180,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 7. Business Rule: Check Service Existence
     let serviceRecord = null;
     try {
       const foundServices = await db
@@ -129,7 +190,6 @@ export async function POST(req: NextRequest) {
 
       serviceRecord = foundServices[0] || null;
     } catch {
-      // In case DB is not yet seeded/connected, check fallback static seed services list
       const staticMatch = SERVICES_SEED.find((s) => s.id === data.serviceId && s.active);
       serviceRecord = staticMatch || null;
     }
@@ -144,7 +204,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 8. Duplicate Detection (within 15 minute window)
     try {
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
       const existingDuplicates = await db
@@ -171,12 +230,12 @@ export async function POST(req: NextRequest) {
           409
         );
       }
-    } catch (dbErr) {
-      // Ignore duplicate check error if DB not ready or offline
+    } catch {
+      // Ignore duplicate check error if DB not ready
     }
 
-    // 9. Database Insert (Parameterized via Drizzle)
     try {
+      const sourceRecordId = `user-${data.serviceId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       await db.insert(reports).values({
         serviceId: data.serviceId,
         amount: String(data.amount),
@@ -190,9 +249,9 @@ export async function POST(req: NextRequest) {
         description: sanitizedDescription,
         status: "pending",
         source: "crowdsourced",
+        sourceRecordId,
       });
     } catch {
-      // Graceful fallback response if database connection is pending configuration
       return jsonResponse(
         {
           success: true,
@@ -202,7 +261,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 10. Success Response
     return jsonResponse(
       {
         success: true,
@@ -222,6 +280,15 @@ export async function POST(req: NextRequest) {
 /**
  * GET /api/reports
  * Fetch approved reports and aggregate statistics for frontend.
+ *
+ * When `service` query param is provided (service slug):
+ *   - Returns reports filtered by that service
+ *   - Includes initial estimate for the service
+ *   - Returns merged stats (initial estimate + approved reports)
+ *
+ * When no `service` param:
+ *   - Returns per-service stats for all services (for homepage/browse)
+ *   - Includes initial estimates for all services
  */
 export async function GET(req: NextRequest) {
   try {
@@ -242,82 +309,42 @@ export async function GET(req: NextRequest) {
 
     const { service, category, city, state, limit, cursor } = validationResult.data;
 
-    let dbReports: Array<{
-      id: string;
-      serviceId: string;
-      amount: string;
-      currency: string;
-      paid: boolean;
-      paymentMode: string;
-      city: string;
-      state: string;
-      incidentMonth: string;
-      officialRole: string | null;
-      description: string | null;
-      status: string;
-      source: string;
-      createdAt: string;
-      updatedAt: string;
-    }> = [];
-
     try {
-      // Build conditions array: ONLY APPROVED REPORTS
-      const conditions = [eq(reports.status, "approved")];
-
-      if (city) {
-        conditions.push(eq(reports.city, city));
-      }
-      if (state) {
-        conditions.push(eq(reports.state, state));
-      }
-      if (cursor) {
-        conditions.push(lt(reports.id, cursor));
+      if (service) {
+        return await handleSingleServiceQuery(service, city, state, limit, cursor);
       }
 
-      // Execute main query
-      dbReports = await db
-        .select()
-        .from(reports)
-        .where(and(...conditions))
-        .orderBy(desc(reports.createdAt))
-        .limit(limit + 1);
+      return await handleAllServicesQuery(category, city, state);
     } catch {
-      // Fallback: If DB empty/offline, serve formatted aggregate stats from local offences dataset
-      const matchedOffence = OFFENCES.find(
-        (o) => o.slug === service || o.id === service
-      );
-      if (matchedOffence) {
-        return jsonResponse({
-          success: true,
-          reports: [],
-          stats: {
-            medianAmount: matchedOffence.reportedAmount.typical,
-            minAmount: matchedOffence.reportedAmount.min,
-            maxAmount: matchedOffence.reportedAmount.max,
-            reportCount: matchedOffence.reports,
-            insufficientData: false,
-          },
-          pagination: { nextCursor: null },
-        });
+      if (service) {
+        const matchedOffence = OFFENCES.find(
+          (o) => o.slug === service || o.id === service
+        );
+        if (matchedOffence) {
+          return jsonResponse({
+            success: true,
+            reports: [],
+            stats: {
+              typical: matchedOffence.reportedAmount.typical,
+              min: matchedOffence.reportedAmount.min,
+              max: matchedOffence.reportedAmount.max,
+              reportCount: matchedOffence.reports,
+              confidence: matchedOffence.confidence,
+              insufficientData: false,
+            },
+            initialEstimate: null,
+            service: null,
+            pagination: { nextCursor: null },
+          });
+        }
       }
+
+      return jsonResponse({
+        success: true,
+        serviceStats: {},
+        pagination: { nextCursor: null },
+      });
     }
-
-    const hasMore = dbReports.length > limit;
-    const resultItems = hasMore ? dbReports.slice(0, limit) : dbReports;
-    const nextCursor = hasMore ? resultItems[resultItems.length - 1].id : null;
-
-    // Calculate aggregate statistics from amounts
-    const numericAmounts = resultItems.map((r) => parseFloat(r.amount));
-    const stats = calculateReportStats(numericAmounts);
-
-    return jsonResponse({
-      success: true,
-      reports: resultItems,
-      stats,
-      pagination: {
-        nextCursor,
-      },
-    });
   } catch (error) {
     console.error("GET /api/reports internal error:", error);
     return jsonResponse(
@@ -327,13 +354,248 @@ export async function GET(req: NextRequest) {
   }
 }
 
+async function handleSingleServiceQuery(
+  serviceSlug: string,
+  city?: string,
+  state?: string,
+  limit: number = 20,
+  cursor?: string
+) {
+  const serviceRows = await db
+    .select({
+      id: services.id,
+      name: services.name,
+      slug: services.slug,
+      categoryId: services.categoryId,
+      categoryName: categories.name,
+      categorySlug: categories.slug,
+    })
+    .from(services)
+    .innerJoin(categories, eq(services.categoryId, categories.id))
+    .where(eq(services.slug, serviceSlug))
+    .limit(1);
+
+  const serviceRow = serviceRows[0];
+  if (!serviceRow) {
+    return jsonResponse(
+      { success: false, error: `Service not found: ${serviceSlug}` },
+      404
+    );
+  }
+
+  const estimateRows = await db
+    .select()
+    .from(initialEstimates)
+    .where(eq(initialEstimates.serviceId, serviceRow.id))
+    .limit(1);
+
+  const initialEstimate = estimateRows[0] || null;
+
+  const conditions = [
+    eq(reports.status, "approved"),
+    eq(reports.serviceId, serviceRow.id),
+  ];
+
+  if (city) {
+    conditions.push(eq(reports.city, city));
+  }
+  if (state) {
+    conditions.push(eq(reports.state, state));
+  }
+  if (cursor) {
+    conditions.push(lt(reports.id, cursor));
+  }
+
+  const dbReports = await db
+    .select()
+    .from(reports)
+    .where(and(...conditions))
+    .orderBy(desc(reports.createdAt))
+    .limit(limit + 1);
+
+  const hasMore = dbReports.length > limit;
+  const resultItems = hasMore ? dbReports.slice(0, limit) : dbReports;
+  const nextCursor = hasMore ? resultItems[resultItems.length - 1].id : null;
+
+  const numericAmounts = resultItems.map((r) => parseFloat(r.amount));
+  const reportStats = calculateReportStats(numericAmounts);
+
+  const stats = mergeEstimateWithReportStats(initialEstimate, reportStats);
+
+  return jsonResponse({
+    success: true,
+    reports: resultItems,
+    stats,
+    initialEstimate: initialEstimate
+      ? {
+          amount: parseFloat(String(initialEstimate.amount)),
+          minAmount: initialEstimate.minAmount
+            ? parseFloat(String(initialEstimate.minAmount))
+            : null,
+          maxAmount: initialEstimate.maxAmount
+            ? parseFloat(String(initialEstimate.maxAmount))
+            : null,
+          methodology: initialEstimate.methodology,
+          confidence: initialEstimate.confidence,
+          observationCount: Number(initialEstimate.observationCount),
+        }
+      : null,
+    service: {
+      id: serviceRow.id,
+      name: serviceRow.name,
+      slug: serviceRow.slug,
+      categorySlug: serviceRow.categorySlug,
+      categoryName: serviceRow.categoryName,
+    },
+    pagination: {
+      nextCursor,
+    },
+  });
+}
+
+async function handleAllServicesQuery(
+  category?: string,
+  city?: string,
+  state?: string
+) {
+  const serviceRows = await db
+    .select({
+      id: services.id,
+      name: services.name,
+      slug: services.slug,
+      categoryId: services.categoryId,
+      categoryName: categories.name,
+      categorySlug: categories.slug,
+    })
+    .from(services)
+    .innerJoin(categories, eq(services.categoryId, categories.id))
+    .where(eq(services.active, true));
+
+  const allEstimates = await db.select().from(initialEstimates);
+
+  const estimateByServiceId = new Map(
+    allEstimates.map((e) => [e.serviceId, e])
+  );
+
+  const reportConditions = [eq(reports.status, "approved")];
+  if (city) {
+    reportConditions.push(eq(reports.city, city));
+  }
+  if (state) {
+    reportConditions.push(eq(reports.state, state));
+  }
+
+  const allReports = await db
+    .select({
+      serviceId: reports.serviceId,
+      amount: reports.amount,
+    })
+    .from(reports)
+    .where(and(...reportConditions));
+
+  const amountsByService = new Map<string, number[]>();
+  for (const r of allReports) {
+    const existing = amountsByService.get(r.serviceId) || [];
+    existing.push(parseFloat(r.amount));
+    amountsByService.set(r.serviceId, existing);
+  }
+
+  const serviceStats: Record<
+    string,
+    {
+      name: string;
+      slug: string;
+      categorySlug: string;
+      categoryName: string;
+      initialEstimate: {
+        amount: number;
+        minAmount: number | null;
+        maxAmount: number | null;
+        methodology: string;
+        confidence: string;
+        observationCount: number;
+      } | null;
+      reportStats: {
+        medianAmount: number;
+        minAmount: number;
+        maxAmount: number;
+        reportCount: number;
+        insufficientData?: boolean;
+      };
+      mergedStats: {
+        typical: number;
+        min: number;
+        max: number;
+        reportCount: number;
+        confidence: string;
+      };
+    }
+  > = {};
+
+  for (const svc of serviceRows) {
+    const estimate = estimateByServiceId.get(svc.id) || null;
+    const amounts = amountsByService.get(svc.id) || [];
+    const reportStats = calculateReportStats(amounts);
+
+    const merged = mergeEstimateWithReportStats(estimate, reportStats);
+
+    serviceStats[svc.slug] = {
+      name: svc.name,
+      slug: svc.slug,
+      categorySlug: svc.categorySlug,
+      categoryName: svc.categoryName,
+      initialEstimate: estimate
+        ? {
+            amount: parseFloat(String(estimate.amount)),
+            minAmount: estimate.minAmount
+              ? parseFloat(String(estimate.minAmount))
+              : null,
+            maxAmount: estimate.maxAmount
+              ? parseFloat(String(estimate.maxAmount))
+              : null,
+            methodology: estimate.methodology,
+            confidence: estimate.confidence,
+            observationCount: Number(estimate.observationCount),
+          }
+        : null,
+      reportStats,
+      mergedStats: {
+        typical: merged.typical,
+        min: merged.min,
+        max: merged.max,
+        reportCount: merged.reportCount,
+        confidence: merged.confidence,
+      },
+    };
+  }
+
+  if (category) {
+    const filtered: typeof serviceStats = {};
+    for (const [slug, stats] of Object.entries(serviceStats)) {
+      if (stats.categorySlug === category) {
+        filtered[slug] = stats;
+      }
+    }
+    return jsonResponse({
+      success: true,
+      serviceStats: filtered,
+      pagination: { nextCursor: null },
+    });
+  }
+
+  return jsonResponse({
+    success: true,
+    serviceStats,
+    pagination: { nextCursor: null },
+  });
+}
+
 /**
  * PATCH /api/reports
  * Moderator / Admin moderation action (approve or reject a report).
  */
 export async function PATCH(req: NextRequest) {
   try {
-    // 1. Authorization Verification
     const authHeader = req.headers.get("authorization") || "";
     const bearerSecret = authHeader.startsWith("Bearer ")
       ? authHeader.slice(7)
@@ -349,7 +611,6 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // 2. Request Body Size Check
     const rawBody = await req.text();
     if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_SIZE_BYTES) {
       return jsonResponse(
@@ -358,7 +619,6 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // 3. JSON Parsing & Schema Validation
     let bodyJson: unknown;
     try {
       bodyJson = JSON.parse(rawBody);
@@ -384,7 +644,6 @@ export async function PATCH(req: NextRequest) {
     const { reportId, action } = validationResult.data;
     const newStatus = action === "approve" ? "approved" : "rejected";
 
-    // 4. Update Database Record
     try {
       const updated = await db
         .update(reports)
