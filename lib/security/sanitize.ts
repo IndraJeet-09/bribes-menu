@@ -5,8 +5,8 @@
  * 3. Normalizes and collapses repeated whitespace
  * 4. Trims leading/trailing whitespace
  */
-export function sanitizeString(text: string): string {
-  if (!text) return "";
+export function sanitizeString(text: string | null | undefined): string {
+  if (!text || typeof text !== "string") return "";
 
   return text
     // Remove null bytes and invisible control chars (except standard newlines/tabs)
