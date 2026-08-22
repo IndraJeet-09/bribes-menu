@@ -41,9 +41,9 @@ export const reportSubmissionSchema = z
 
     city: z
       .string()
-      .min(2, "city name must be at least 2 characters.")
-      .max(100, "city name cannot exceed 100 characters.")
-      .transform((val) => sanitizeString(val)),
+      .transform((val) => sanitizeString(val))
+      .refine((val) => val.length >= 2, "city name must be at least 2 characters.")
+      .refine((val) => val.length <= 100, "city name cannot exceed 100 characters."),
 
     state: z.enum(INDIAN_STATES, {
       message: "Invalid Indian state or union territory.",

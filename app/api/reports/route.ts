@@ -105,8 +105,10 @@ function mergeEstimateWithReportStats(
  * Submit a new anonymous report.
  */
 export async function POST(req: NextRequest) {
+  console.log("[POST /api/reports] Request received");
   try {
     const contentType = req.headers.get("content-type") || "";
+    console.log("[POST /api/reports] Content-Type:", contentType);
     if (!contentType.includes("application/json")) {
       return jsonResponse(
         { success: false, error: "Content-Type must be application/json." },
@@ -114,7 +116,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[POST /api/reports] Reading body...");
     const rawBody = await req.text();
+    console.log("[POST /api/reports] Body length:", rawBody.length);
     if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_SIZE_BYTES) {
       return jsonResponse(
         { success: false, error: "Payload too large. Maximum size is 10KB." },
@@ -132,6 +136,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[POST /api/reports] Validating...");
     const validationResult = reportSubmissionSchema.safeParse(bodyJson);
     if (!validationResult.success) {
       const issue = validationResult.error.issues[0];
@@ -146,8 +151,10 @@ export async function POST(req: NextRequest) {
     }
 
     const data = validationResult.data;
+    console.log("[POST /api/reports] Validation passed:", { serviceId: data.serviceId, amount: data.amount });
 
     if (data.description) {
+      console.log("[POST /api/reports] Checking PII...");
       const piiCheck = detectPIIAndSpam(data.description);
       if (piiCheck.hasPIIOrSuspicious) {
         return jsonResponse(
@@ -163,6 +170,7 @@ export async function POST(req: NextRequest) {
 
     const sanitizedDescription = data.description ? sanitizeString(data.description) : null;
 
+    console.log("[POST /api/reports] Checking rate limit...");
     const clientIp = getClientIp(req);
     const hashedId = hashClientIdentifier(clientIp);
     const rateLimit = checkRateLimit(hashedId);
@@ -177,7 +185,9 @@ export async function POST(req: NextRequest) {
         { "Retry-After": String(rateLimit.retryAfterSeconds || 60) }
       );
     }
+    console.log("[POST /api/reports] Rate limit passed");
 
+    console.log("[POST /api/reports] Looking up service...");
     let serviceRecord = null;
     const foundServices = await db
       .select()
@@ -196,6 +206,7 @@ export async function POST(req: NextRequest) {
         400
       );
     }
+    console.log("[POST /api/reports] Service found:", serviceRecord.name);
 
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
     const existingDuplicates = await db
@@ -224,21 +235,28 @@ export async function POST(req: NextRequest) {
     }
 
     const sourceRecordId = `user-${data.serviceId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    await db.insert(reports).values({
-      serviceId: data.serviceId,
-      amount: String(data.amount),
-      currency: "INR",
-      paid: data.paid,
-      paymentMode: data.paymentMode,
-      city: data.city,
-      state: data.state,
-      incidentMonth: data.incidentMonth,
-      officialRole: data.officialRole || null,
-      description: sanitizedDescription,
-      status: "pending",
-      source: "crowdsourced",
-      sourceRecordId,
-    });
+    console.log("[POST /api/reports] Attempting database insert:", { sourceRecordId, serviceId: data.serviceId, amount: data.amount });
+    try {
+      await db.insert(reports).values({
+        serviceId: data.serviceId,
+        amount: String(data.amount),
+        currency: "INR",
+        paid: data.paid,
+        paymentMode: data.paymentMode,
+        city: data.city,
+        state: data.state,
+        incidentMonth: data.incidentMonth,
+        officialRole: data.officialRole || null,
+        description: sanitizedDescription,
+        status: "pending",
+        source: "crowdsourced",
+        sourceRecordId,
+      });
+      console.log("[POST /api/reports] Database insert successful");
+    } catch (dbError) {
+      console.error("[POST /api/reports] Database insert failed:", dbError);
+      throw dbError;
+    }
 
     return jsonResponse(
       {
