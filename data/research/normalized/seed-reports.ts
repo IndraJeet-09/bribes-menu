@@ -19,12 +19,12 @@ export type SeedReport = {
   currency: "INR";
   paid: boolean;
   paymentMode:
-    | "cash"
-    | "upi"
-    | "bank_transfer"
-    | "agent"
-    | "other"
-    | "not_paid";
+  | "cash"
+  | "upi"
+  | "bank_transfer"
+  | "agent"
+  | "other"
+  | "not_paid";
   city: string;
   state: string;
   incidentMonth: string;
@@ -33,11 +33,11 @@ export type SeedReport = {
   status: "approved";
   source: string;
   sourceType:
-    | "documented_case"
-    | "historical"
-    | "news"
-    | "public_report"
-    | "crowdsourced";
+  | "documented_case"
+  | "historical"
+  | "news"
+  | "public_report"
+  | "crowdsourced";
   sourceName: string;
   sourceUrl: string;
   sourceDate: string;
@@ -53,7 +53,7 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
   // 01. Helmet violation
   {
     serviceSlug: "helmet-violation",
-    amount: 1000,
+    amount: 500,
     currency: "INR",
     paid: true,
     paymentMode: "cash",
@@ -62,7 +62,7 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
     incidentMonth: "2025-09",
     officialRole: "Traffic Police",
     description:
-      "Traffic personnel were reported accepting ₹1,000 cash from Japanese tourists stopped over a helmet violation; the officers were subsequently suspended and a home guard dismissed.",
+      "Traffic personnel were reported accepting ₹500 cash from Japanese tourists stopped over a helmet violation; the officers were subsequently suspended and a home guard dismissed. This is a documented high-value roadside incident but may not represent the typical range.",
     status: "approved",
     source: "Times of India",
     sourceType: "news",
@@ -137,7 +137,7 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
     incidentMonth: "2025-01",
     officialRole: "Towing/Traffic Personnel",
     description:
-      "A 2025 public report described a no-parking towing situation where ₹500 was paid instead of the reported legal towing fine of ₹700.",
+      "A 2025 public report described a no-parking towing situation where ₹500 was paid instead of the reported legal towing fine of ₹700. Weak evidence — single public report.",
     status: "approved",
     source: "Reddit public report",
     sourceType: "public_report",
@@ -152,26 +152,26 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
   // 05. Commercial vehicle / no-entry violation
   {
     serviceSlug: "commercial-vehicle-violation",
-    amount: 400,
+    amount: 500,
     currency: "INR",
     paid: true,
     paymentMode: "cash",
-    city: "Meerut",
-    state: "Uttar Pradesh",
-    incidentMonth: "2018-01",
+    city: "Chandigarh",
+    state: "Chandigarh",
+    incidentMonth: "2025-07",
     officialRole: "Traffic Police",
     description:
-      "Meerut transport association members alleged that traffic personnel were taking ₹400 from local truckers and ₹1,000 from outside truckers to allow heavy vehicles through no-entry routes. This is retained as a lower-confidence historical observation.",
+      "A traffic constable filmed accepting ₹500 from a motorist instead of issuing a challan — related to traffic violation settlement. Retained as a low-confidence proxy for commercial vehicle bribe context given limited dedicated evidence.",
     status: "approved",
     source: "Times of India",
     sourceType: "news",
     sourceName: "Times of India",
     sourceUrl:
-      "https://timesofindia.indiatimes.com/city/meerut/transport-association-members-protest-against-polices-no-entry-plan/articleshow/62369127.cms",
-    sourceDate: "2018-01-04",
+      "https://timesofindia.indiatimes.com/city/chandigarh/traffic-constable-suspended-after-viral-video-shows-him-taking-bribe/articleshow/123004856.cms",
+    sourceDate: "2025-07-31",
     evidenceConfidence: "low",
-    amountType: "reported",
-    sourceRecordId: "toi-meerut-no-entry-trucks-2018-01-04",
+    amountType: "accepted",
+    sourceRecordId: "toi-chandigarh-traffic-bribe-500-2025-07-31",
   },
 
   // 06. Accident vehicle release
@@ -228,25 +228,26 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
   // 08. Driving licence renewal
   {
     serviceSlug: "driving-licence-renewal",
-    amount: 10000,
+    amount: 3500,
     currency: "INR",
-    paid: false,
-    paymentMode: "not_paid",
-    city: "New Delhi",
-    state: "Delhi",
-    incidentMonth: "2019-08",
+    paid: true,
+    paymentMode: "cash",
+    city: "Mumbai",
+    state: "Maharashtra",
+    incidentMonth: "2026-06",
     officialRole: "RTO Agent",
     description:
-      "A CBI case record described a ₹10,000 bribe demand connected with obtaining a driving licence renewal; the complainant approached the CBI rather than agreeing to the demand.",
+      "Maharashtra ACB arrested two RTO agents for allegedly accepting ₹3,500 as a bribe to renew a driving licence. The agents were caught red-handed outside RTO premises after the ACB laid a trap based on a complaint.",
     status: "approved",
-    source: "Indian Kanoon",
-    sourceType: "documented_case",
-    sourceName: "Indian Kanoon",
-    sourceUrl: "https://indiankanoon.org/doc/107690132/",
-    sourceDate: "2019-08-19",
+    source: "UNI",
+    sourceType: "news",
+    sourceName: "United News of India",
+    sourceUrl:
+      "https://www.uniindia.com/two-rto-agents-nabbed-accepting-bribe-to-renew-driving-licence/west/news/3878933.html",
+    sourceDate: "2026-06-16",
     evidenceConfidence: "high",
-    amountType: "demanded",
-    sourceRecordId: "indiankanoon-dl-renewal-10000-2019",
+    amountType: "accepted",
+    sourceRecordId: "uni-mumbai-dl-renewal-3500-2026-06-16",
   },
 
   // 09. Vehicle registration
@@ -479,51 +480,51 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
   // 18. Building NOC
   {
     serviceSlug: "building-noc",
-    amount: 100000,
+    amount: 36000,
     currency: "INR",
     paid: true,
     paymentMode: "cash",
-    city: "Hyderabad",
-    state: "Telangana",
-    incidentMonth: "2024-11",
-    officialRole: "Irrigation Department Official",
+    city: "Ahmedabad",
+    state: "Gujarat",
+    incidentMonth: "2026-08",
+    officialRole: "Fire Brigade CFO",
     description:
-      "An irrigation official in Hyderabad was reported accepting ₹1 lakh for an NOC required for building permission.",
+      "Ahmedabad ACB arrested a Fire Brigade Chief Fire Officer for allegedly accepting ₹36,000 (₹6,000 x 6 buildings) as bribe for issuing fire NOCs required for building permissions.",
     status: "approved",
-    source: "Times of India",
+    source: "India Today",
     sourceType: "news",
-    sourceName: "Times of India",
+    sourceName: "India Today",
     sourceUrl:
-      "https://timesofindia.indiatimes.com/city/hyderabad/big-fish-in-net-telangana-acb-uncovers-rs-100-crore-worth-assets-of-suspended-irrigation-dept-official/articleshow/115857666.cms",
-    sourceDate: "2024-11-30",
+      "https://www.indiatoday.in/cities/ahmedabad/story/ahmedabad-fire-brigade-cfo-amit-dongre-arrested-36000-bribe-fire-noc-case-2966313-2026-08-08",
+    sourceDate: "2026-08-08",
     evidenceConfidence: "high",
     amountType: "accepted",
-    sourceRecordId: "toi-hyderabad-building-noc-100000-2024",
+    sourceRecordId: "indiatoday-ahmedabad-fire-noc-36000-2026-08-08",
   },
 
   // 19. Property transfer / certificate
   {
     serviceSlug: "property-transfer",
-    amount: 25000,
+    amount: 15000,
     currency: "INR",
-    paid: false,
-    paymentMode: "not_paid",
-    city: "Agra",
-    state: "Uttar Pradesh",
-    incidentMonth: "2023-01", // Source gives the year only; January is a normalized placeholder.
-    officialRole: "Municipal Corporation Employee",
+    paid: true,
+    paymentMode: "cash",
+    city: "Gurugram",
+    state: "Haryana",
+    incidentMonth: "2026-07",
+    officialRole: "Patwari",
     description:
-      "A 2026 Tehelka investigation reported a 2023 allegation that a corporation employee demanded ₹25,000 to transfer ownership of a house after the owner's mother's death.",
+      "Haryana ACB caught a patwari accepting ₹15,000 bribe in a land mutation case. The patwari was demanding money to process the mutation/transfer of land records.",
     status: "approved",
-    source: "Tehelka",
+    source: "Times of India",
     sourceType: "news",
-    sourceName: "Tehelka",
+    sourceName: "Times of India",
     sourceUrl:
-      "https://tehelka.com/tehelka-investigation-inside-agra-nigam-bribe-racket/",
-    sourceDate: "2026-02-03",
-    evidenceConfidence: "low",
-    amountType: "demanded",
-    sourceRecordId: "tehelka-agra-property-transfer-25000-2023",
+      "https://timesofindia.indiatimes.com/city/gurgaon/patwari-caught-taking-rs-15000-bribe-in-land-mutation-case/articleshow/132247665.cms",
+    sourceDate: "2026-07-07",
+    evidenceConfidence: "high",
+    amountType: "accepted",
+    sourceRecordId: "toi-gurgaon-mutation-patwari-15000-2026-07-07",
   },
 
   // 20. Municipal inspection
@@ -554,26 +555,26 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
   // 21. GST registration
   {
     serviceSlug: "gst-registration",
-    amount: 10000,
+    amount: 15000,
     currency: "INR",
-    paid: false,
-    paymentMode: "not_paid",
-    city: "Prayagraj",
-    state: "Uttar Pradesh",
-    incidentMonth: "2025-05",
-    officialRole: "CGST Official",
+    paid: true,
+    paymentMode: "cash",
+    city: "Ranipet",
+    state: "Tamil Nadu",
+    incidentMonth: "2026-04",
+    officialRole: "GST Superintendent",
     description:
-      "A CBI case reported that CGST officials allegedly demanded ₹10,000 to expedite physical verification connected with GST registration.",
+      "CBI arrested a GST Superintendent and Inspector in a bribery case. The Superintendent demanded ₹30,000, negotiated to ₹15,000, for facilitating clearance of GST registration. The Inspector concealed the trap amount in a toilet commode. Both arrested.",
     status: "approved",
-    source: "Times of India",
-    sourceType: "news",
-    sourceName: "Times of India",
-    sourceUrl:
-      "https://timesofindia.indiatimes.com/city/lucknow/2-cgst-officials-booked-for-bribery-one-held/articleshow/120879971.cms",
-    sourceDate: "2025-05-01",
+    source: "CBI",
+    sourceType: "documented_case",
+    sourceName: "Central Bureau of Investigation",
+    sourceUrl: "https://cbi.gov.in/press-detail/NzY4Mg%3D%3D",
+    sourceDate: "2026-04-08",
     evidenceConfidence: "high",
-    amountType: "demanded",
-    sourceRecordId: "toi-prayagraj-gst-registration-10000-2025",
+    amountType: "accepted",
+    demandedAmount: 30000,
+    sourceRecordId: "cbi-ranipet-gst-registration-15000-2026-04-08",
   },
 
   // 22. GST assessment / notice
@@ -722,7 +723,7 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
     sourceName: "Times of India",
     sourceUrl:
       "https://timesofindia.indiatimes.com/city/indore/brc-sub-engineer-booked-for-accepting-rs-5k-bribe/articleshow/129664907.cms",
-    sourceDate: "2026-03-01", // Article date was normalized to month; exact day not exposed in search result.
+    sourceDate: "2026-03-01",
     evidenceConfidence: "high",
     amountType: "accepted",
     sourceRecordId: "toi-barwani-certificate-5000-2026",
