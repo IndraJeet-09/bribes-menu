@@ -174,7 +174,7 @@ export const SERVICES_SEED: ServiceSeed[] = [
     name: "Municipal inspection",
     slug: "municipal-inspection",
     aliases: ["municipal", "inspection", "municipality", "shop inspection"],
-    active: false,
+    active: true,
   },
   {
     id: "20000000-0000-4000-a000-000000000021",
@@ -198,7 +198,7 @@ export const SERVICES_SEED: ServiceSeed[] = [
     name: "Income-tax notice / assessment",
     slug: "income-tax-assessment",
     aliases: ["income tax", "IT notice", "tax notice", "IT department", "income tax assessment"],
-    active: false,
+    active: true,
   },
   {
     id: "20000000-0000-4000-a000-000000000024",
@@ -206,7 +206,7 @@ export const SERVICES_SEED: ServiceSeed[] = [
     name: "Business / shop licence",
     slug: "business-licence",
     aliases: ["shop licence", "trade licence", "business licence", "shop license", "trade license"],
-    active: false,
+    active: true,
   },
   {
     id: "20000000-0000-4000-a000-000000000025",
