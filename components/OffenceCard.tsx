@@ -17,6 +17,7 @@ export function OffenceCard({ offence, isLoading }: OffenceCardProps) {
   const min = hasDbData ? offence.dbMin : offence.reportedAmount.min;
   const max = hasDbData ? offence.dbMax : offence.reportedAmount.max;
   const reportCount = hasDbData ? offence.dbReportCount : offence.reports;
+  const hasEstimate = typical > 0;
 
   // Show skeleton while DB data is loading
   if (isLoading) {
@@ -81,21 +82,42 @@ export function OffenceCard({ offence, isLoading }: OffenceCardProps) {
       <div className="pt-6 mt-4 border-t border-border/60">
         <div className="flex items-baseline justify-between gap-2">
           <div>
-            <div className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {formatINR(typical)}
-            </div>
-            <div className="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">
-              TYPICAL REPORTED
-            </div>
+            {hasEstimate ? (
+              <>
+                <div className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  {formatINR(typical)}
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">
+                  TYPICAL REPORTED
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="font-mono text-sm font-medium text-muted-dark italic">
+                  Estimate pending
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">
+                  AWAITING DATA
+                </div>
+              </>
+            )}
           </div>
 
           <div className="text-right">
-            <div className="font-mono text-xs font-medium text-muted-dark">
-              {formatINR(min)} — {formatINR(max)}
-            </div>
-            <div className="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">
-              REPORTED RANGE
-            </div>
+            {hasEstimate ? (
+              <>
+                <div className="font-mono text-xs font-medium text-muted-dark">
+                  {formatINR(min)} — {formatINR(max)}
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-wider text-muted mt-0.5">
+                  REPORTED RANGE
+                </div>
+              </>
+            ) : (
+              <div className="font-mono text-[10px] text-muted italic">
+                No data yet
+              </div>
+            )}
           </div>
         </div>
 

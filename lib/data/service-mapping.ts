@@ -35,6 +35,25 @@ export const OFFENCE_TO_SERVICE_SLUG: Record<string, string> = {
   "noise-related-violation": "fir-complaint",
   "unauthorised-construction-issue": "building-permission",
   "public-space-encroachment-issue": "municipal-inspection",
+  // New services (18 + missing-lost-document-complaint)
+  "birth-certificate": "birth-certificate",
+  "death-certificate": "death-certificate",
+  "domicile-residence-certificate": "domicile-residence-certificate",
+  "caste-certificate": "caste-certificate",
+  "voter-id-electoral-correction": "voter-id-electoral-correction",
+  "aadhaar-update": "aadhaar-update",
+  "ration-card": "ration-card",
+  "police-clearance-certificate": "police-clearance-certificate",
+  "tenant-address-verification": "tenant-address-verification",
+  "missing-lost-document-complaint": "missing-lost-document-complaint",
+  "water-connection": "water-connection",
+  "electricity-meter-bill-complaint": "electricity-meter-bill-complaint",
+  "marriage-certificate": "marriage-certificate",
+  "property-mutation": "property-mutation",
+  "rti-application": "rti-application",
+  "pension-social-security": "pension-social-security",
+  "driving-licence-test": "driving-licence-test",
+  "vehicle-ownership-transfer": "vehicle-ownership-transfer",
 };
 
 /**

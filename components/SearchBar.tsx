@@ -268,7 +268,7 @@ export function SearchBar({
                         </div>
 
                         <div className="text-right shrink-0">
-                          {typical !== undefined && min !== undefined && max !== undefined ? (
+                          {typical !== undefined && min !== undefined && max !== undefined && typical > 0 ? (
                             <>
                               <div className="font-serif text-lg font-bold text-foreground">
                                 {formatINR(typical)}
@@ -277,6 +277,10 @@ export function SearchBar({
                                 {formatINR(min)} — {formatINR(max)}
                               </div>
                             </>
+                          ) : typical !== undefined && typical === 0 ? (
+                            <div className="font-mono text-[11px] text-muted italic">
+                              Estimate pending
+                            </div>
                           ) : (
                             <div className="h-6 w-20 animate-pulse bg-neutral-200 rounded" />
                           )}

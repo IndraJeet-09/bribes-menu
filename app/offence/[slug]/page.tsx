@@ -72,8 +72,9 @@ export default async function OffenceDetailPage({ params }: Props) {
   const max = dbData?.stats.max ?? offence.reportedAmount.max;
   const reportCount = dbData?.stats.reportCount ?? offence.reports;
   const confidence = dbData?.stats.confidence ?? offence.confidence;
+  const hasEstimate = typical > 0;
 
-  const reportedAmountForViz = { min, max, typical, currency: "INR" as const };
+  const reportedAmountForViz = hasEstimate ? { min, max, typical, currency: "INR" as const } : null;
 
   const relatedOffences = OFFENCES.filter(
     (o) => o.id !== offence.id && (o.category === offence.category || true)
@@ -132,33 +133,56 @@ export default async function OffenceDetailPage({ params }: Props) {
             <span className="font-mono text-xs uppercase tracking-widest text-muted block mb-1">
               TYPICAL REPORTED AMOUNT
             </span>
-            <div className="font-serif text-5xl sm:text-7xl font-bold tracking-tight text-foreground">
-              {formatINR(typical)}
-            </div>
-            <div className="font-mono text-xs text-muted mt-1">
-              {dbData
-                ? `Based on ${reportCount} approved report${reportCount === 1 ? "" : "s"}`
-                : `Crowdsourced median from ${reportCount} verified anecdotes`}
-            </div>
+            {hasEstimate ? (
+              <>
+                <div className="font-serif text-5xl sm:text-7xl font-bold tracking-tight text-foreground">
+                  {formatINR(typical)}
+                </div>
+                <div className="font-mono text-xs text-muted mt-1">
+                  {dbData
+                    ? `Based on ${reportCount} approved report${reportCount === 1 ? "" : "s"}`
+                    : `Crowdsourced median from ${reportCount} verified anecdotes`}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="font-mono text-xl sm:text-2xl font-medium text-muted-dark italic">
+                  Estimate pending
+                </div>
+                <div className="font-mono text-xs text-muted mt-1">
+                  Awaiting crowdsourced data for this service
+                </div>
+              </>
+            )}
           </div>
 
           <div className="sm:text-right font-mono">
             <span className="text-xs uppercase tracking-widest text-muted block mb-1">
               REPORTED RANGE
             </span>
-            <div className="text-xl sm:text-2xl font-bold text-muted-dark">
-              {formatINR(min)} — {formatINR(max)}
-            </div>
-            <div className="text-[11px] text-muted mt-0.5">
-              Subject to location & negotiation
-            </div>
+            {hasEstimate ? (
+              <>
+                <div className="text-xl sm:text-2xl font-bold text-muted-dark">
+                  {formatINR(min)} — {formatINR(max)}
+                </div>
+                <div className="text-[11px] text-muted mt-0.5">
+                  Subject to location & negotiation
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-muted italic">
+                No data yet
+              </div>
+            )}
           </div>
         </div>
 
         {/* Range Visualizer Distribution */}
-        <div>
-          <AmountVisualizer reportedAmount={reportedAmountForViz} />
-        </div>
+        {hasEstimate && reportedAmountForViz && (
+          <div>
+            <AmountVisualizer reportedAmount={reportedAmountForViz} />
+          </div>
+        )}
       </div>
 
       {/* Metadata & Key Factors Grid */}
