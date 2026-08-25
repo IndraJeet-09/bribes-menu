@@ -6,19 +6,49 @@ import { ArrowUpRight } from "lucide-react";
 
 interface OffenceCardProps {
   offence: Offence | EnrichedOffence;
+  isLoading?: boolean;
 }
 
-export function OffenceCard({ offence }: OffenceCardProps) {
+export function OffenceCard({ offence, isLoading }: OffenceCardProps) {
   const { slug, title, category, location } = offence;
 
-  const typical =
-    "dbTypical" in offence ? offence.dbTypical : offence.reportedAmount.typical;
-  const min =
-    "dbMin" in offence ? offence.dbMin : offence.reportedAmount.min;
-  const max =
-    "dbMax" in offence ? offence.dbMax : offence.reportedAmount.max;
-  const reportCount =
-    "dbReportCount" in offence ? offence.dbReportCount : offence.reports;
+  const hasDbData = "dbTypical" in offence;
+  const typical = hasDbData ? offence.dbTypical : offence.reportedAmount.typical;
+  const min = hasDbData ? offence.dbMin : offence.reportedAmount.min;
+  const max = hasDbData ? offence.dbMax : offence.reportedAmount.max;
+  const reportCount = hasDbData ? offence.dbReportCount : offence.reports;
+
+  // Show skeleton while DB data is loading
+  if (isLoading) {
+    return (
+      <div className="group relative flex flex-col justify-between rounded-lg border border-border bg-surface p-5 sm:p-6 animate-pulse">
+        <div>
+          <div className="flex items-center justify-between gap-2 pb-3">
+            <div className="h-4 w-20 rounded bg-neutral-200" />
+            <div className="h-4 w-4 rounded bg-neutral-200" />
+          </div>
+          <div className="h-6 w-3/4 rounded bg-neutral-200 mb-2" />
+          <div className="h-4 w-full rounded bg-neutral-200" />
+        </div>
+        <div className="pt-6 mt-4 border-t border-border/60">
+          <div className="flex items-baseline justify-between gap-2">
+            <div>
+              <div className="h-8 w-24 rounded bg-neutral-200" />
+              <div className="h-3 w-20 rounded bg-neutral-200 mt-0.5" />
+            </div>
+            <div className="text-right">
+              <div className="h-4 w-28 rounded bg-neutral-200" />
+              <div className="h-3 w-24 rounded bg-neutral-200 mt-0.5" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/40">
+            <div className="h-3 w-16 rounded bg-neutral-200" />
+            <div className="h-3 w-24 rounded bg-neutral-200" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Link

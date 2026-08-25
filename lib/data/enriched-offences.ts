@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Offence } from "@/types/offence";
 import { OFFENCE_TO_SERVICE_SLUG } from "@/lib/data/service-mapping";
 
@@ -50,8 +50,7 @@ interface ServiceStatsResponse {
 
 /**
  * Merge OFFENCES editorial content with DB-backed stats.
- * Returns enriched offences with DB stats when available,
- * falling back to static OFFENCES data.
+ * Returns enriched offences with DB stats when available.
  */
 export function mergeOffencesWithDbStats(
   offences: Offence[],
@@ -87,6 +86,8 @@ export function mergeOffencesWithDbStats(
 /**
  * Hook to fetch all service stats from the API and merge with OFFENCES.
  * Returns enriched offences with DB-backed stats.
+ * During loading, returns empty enriched array (no static monetary values).
+ * On error, returns empty enriched array (no fallback to static).
  */
 export function useEnrichedOffences(offences: Offence[]): {
   enriched: EnrichedOffence[];
@@ -129,16 +130,9 @@ export function useEnrichedOffences(offences: Offence[]): {
     };
   }, []);
 
-  const enriched = serviceStats
-    ? mergeOffencesWithDbStats(offences, serviceStats)
-    : offences.map((o) => ({
-        ...o,
-        dbTypical: o.reportedAmount.typical,
-        dbMin: o.reportedAmount.min,
-        dbMax: o.reportedAmount.max,
-        dbReportCount: o.reports,
-        dbConfidence: o.confidence,
-      }));
+  // Only return enriched data when DB stats are loaded
+  // During loading or error, return empty array (components show loading/error state)
+  const enriched = serviceStats ? mergeOffencesWithDbStats(offences, serviceStats) : [];
 
   return { enriched, isLoading, error };
 }

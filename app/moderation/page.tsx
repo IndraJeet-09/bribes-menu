@@ -3,6 +3,7 @@ import { reports, services, categories } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { moderateReport, checkModerationAuth, loginAction, logoutAction } from "./actions";
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -151,31 +152,19 @@ function ModerationLoginForm() {
   );
 }
 
+async function approveAction(reportId: string, formData: FormData) {
+  "use server";
+  await moderateReport(reportId, "approve");
+  revalidatePath("/moderation");
+}
+
+async function rejectAction(reportId: string, formData: FormData) {
+  "use server";
+  await moderateReport(reportId, "reject");
+  revalidatePath("/moderation");
+}
+
 function ReportCard({ report }: { report: ModerationReport }) {
-  const handleApprove = async () => {
-    const result = await moderateReport(report.id, "approve");
-    if (!result.success) {
-      alert(result.message);
-      if (result.message.includes("Unauthorized")) {
-        window.location.reload();
-      }
-    } else {
-      window.location.reload();
-    }
-  };
-
-  const handleReject = async () => {
-    const result = await moderateReport(report.id, "reject");
-    if (!result.success) {
-      alert(result.message);
-      if (result.message.includes("Unauthorized")) {
-        window.location.reload();
-      }
-    } else {
-      window.location.reload();
-    }
-  };
-
   return (
     <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
@@ -232,18 +221,22 @@ function ReportCard({ report }: { report: ModerationReport }) {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        <button
-          onClick={handleApprove}
-          className="w-full sm:w-auto font-mono text-xs font-semibold py-2.5 px-4 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-        >
-          APPROVE
-        </button>
-        <button
-          onClick={handleReject}
-          className="w-full sm:w-auto font-mono text-xs font-semibold py-2.5 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
-        >
-          REJECT
-        </button>
+        <form action={approveAction.bind(null, report.id)}>
+          <button
+            type="submit"
+            className="w-full sm:w-auto font-mono text-xs font-semibold py-2.5 px-4 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+          >
+            APPROVE
+          </button>
+        </form>
+        <form action={rejectAction.bind(null, report.id)}>
+          <button
+            type="submit"
+            className="w-full sm:w-auto font-mono text-xs font-semibold py-2.5 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+          >
+            REJECT
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -18,6 +18,8 @@ interface SearchBarProps {
   autoFocus?: boolean;
   placeholder?: string;
   enrichedMap?: Map<string, EnrichedOffence>;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
 export function SearchBar({
@@ -28,6 +30,8 @@ export function SearchBar({
   autoFocus = false,
   placeholder = "Search an offence, violation or situation (e.g. helmet, licence, tax, speed)...",
   enrichedMap,
+  isLoading,
+  error,
 }: SearchBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -193,7 +197,29 @@ export function SearchBar({
           ref={dropdownRef}
           className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-border bg-surface shadow-[0_12px_40px_rgba(0,0,0,0.12)] overflow-hidden animate-slide-down"
         >
-          {results.length > 0 ? (
+          {isLoading ? (
+            <div className="p-8 space-y-3 animate-pulse">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-4">
+                  <div className="h-4 w-16 rounded bg-neutral-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-3/4 rounded bg-neutral-200" />
+                    <div className="h-3 w-1/2 rounded bg-neutral-200" />
+                  </div>
+                  <div className="h-6 w-20 rounded bg-neutral-200" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center">
+              <div className="font-serif text-xl font-bold text-foreground mb-1">
+                Unable to load estimates
+              </div>
+              <p className="font-sans text-sm text-muted max-w-sm mx-auto leading-relaxed">
+                The database is temporarily unavailable. Search results may not show current amounts.
+              </p>
+            </div>
+          ) : results.length > 0 ? (
             <div>
               <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-50 border-b border-border font-mono text-[11px] text-muted">
                 <span>{results.length} MATCH{results.length === 1 ? "" : "ES"} FOUND</span>
@@ -204,10 +230,11 @@ export function SearchBar({
                 {results.slice(0, 7).map((item, index) => {
                   const isSelected = index === selectedIndex;
                   const enriched = enrichedMap?.get(item.slug);
-                  const typical = enriched?.dbTypical ?? item.reportedAmount.typical;
-                  const min = enriched?.dbMin ?? item.reportedAmount.min;
-                  const max = enriched?.dbMax ?? item.reportedAmount.max;
-                  const reportCount = enriched?.dbReportCount ?? item.reports;
+                  // Only show DB-backed monetary values, not static fallbacks
+                  const typical = enriched?.dbTypical;
+                  const min = enriched?.dbMin;
+                  const max = enriched?.dbMax;
+                  const reportCount = enriched?.dbReportCount;
 
                   return (
                     <li key={item.id}>
@@ -229,7 +256,7 @@ export function SearchBar({
                             </span>
                             <span className="text-[10px] text-muted/60">·</span>
                             <span className="font-mono text-[10px] text-muted">
-                              {reportCount} reports
+                              {reportCount !== undefined ? `${reportCount} reports` : "Loading..."}
                             </span>
                           </div>
                           <div className="font-serif text-lg font-bold text-foreground mt-0.5">
@@ -241,12 +268,18 @@ export function SearchBar({
                         </div>
 
                         <div className="text-right shrink-0">
-                          <div className="font-serif text-lg font-bold text-foreground">
-                            {formatINR(typical)}
-                          </div>
-                          <div className="font-mono text-[10px] text-muted">
-                            {formatINR(min)} — {formatINR(max)}
-                          </div>
+                          {typical !== undefined && min !== undefined && max !== undefined ? (
+                            <>
+                              <div className="font-serif text-lg font-bold text-foreground">
+                                {formatINR(typical)}
+                              </div>
+                              <div className="font-mono text-[10px] text-muted">
+                                {formatINR(min)} — {formatINR(max)}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="h-6 w-20 animate-pulse bg-neutral-200 rounded" />
+                          )}
                         </div>
                       </button>
                     </li>

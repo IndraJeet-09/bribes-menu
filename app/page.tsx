@@ -16,7 +16,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<Category | "all">("all");
 
-  const { enriched, isLoading } = useEnrichedOffences(OFFENCES);
+  const { enriched, isLoading, error } = useEnrichedOffences(OFFENCES);
 
   const enrichedMap = useMemo(() => {
     const map = new Map<string, (typeof enriched)[0]>();
@@ -89,6 +89,8 @@ export default function HomePage() {
             showDropdown={true}
             showPopularSearches={true}
             enrichedMap={enrichedMap}
+            isLoading={isLoading}
+            error={error}
           />
         </div>
 
@@ -153,7 +155,7 @@ export default function HomePage() {
 
       {/* Offence Grid */}
       <div className="py-4">
-        <OffenceGrid offences={filteredOffences} onReset={handleReset} />
+        <OffenceGrid offences={filteredOffences} onReset={handleReset} isLoading={isLoading} error={error} />
       </div>
 
       {/* Report CTA Banner */}

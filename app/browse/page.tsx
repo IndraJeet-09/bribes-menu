@@ -23,7 +23,7 @@ function BrowseContent() {
   const [selectedCategory, setSelectedCategory] = useState<Category | "all">(initialCategory);
   const [sortBy, setSortBy] = useState<SortOption>("reports-desc");
 
-  const { enriched } = useEnrichedOffences(OFFENCES);
+  const { enriched, isLoading, error } = useEnrichedOffences(OFFENCES);
 
   const enrichedMap = useMemo(() => {
     const map = new Map<string, (typeof enriched)[0]>();
@@ -136,6 +136,8 @@ function BrowseContent() {
           showPopularSearches={false}
           placeholder="Filter directory by offence, keywords, or context..."
           enrichedMap={enrichedMap}
+          isLoading={isLoading}
+          error={error}
         />
       </div>
 
@@ -219,7 +221,7 @@ function BrowseContent() {
       </div>
 
       {/* Grid of Offences */}
-      <OffenceGrid offences={processedOffences} onReset={handleReset} />
+      <OffenceGrid offences={processedOffences} onReset={handleReset} isLoading={isLoading} error={error} />
     </div>
   );
 }
