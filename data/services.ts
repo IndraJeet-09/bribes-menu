@@ -369,4 +369,20 @@ export const SERVICES_SEED: ServiceSeed[] = [
     aliases: ["pension", "old age pension", "widow pension", "disability pension", "social security", "pension scheme"],
     active: true,
   },
+  {
+    id: "20000000-0000-4000-a000-000000000045",
+    categoryId: getCatId("vehicle"),
+    name: "Driving licence test",
+    slug: "driving-licence-test",
+    aliases: ["driving test", "DL test", "driving licence test", "driving exam", "RTO test"],
+    active: true,
+  },
+  {
+    id: "20000000-0000-4000-a000-000000000046",
+    categoryId: getCatId("vehicle"),
+    name: "Vehicle ownership transfer",
+    slug: "vehicle-ownership-transfer",
+    aliases: ["RC transfer", "ownership transfer", "vehicle transfer", "RC ownership", "transfer RC"],
+    active: true,
+  },
 ];
