@@ -463,7 +463,7 @@ export const OFFENCES: Offence[] = [
     reportedAmount: {
       min: 5000,
       max: 50000,
-      typical: 20000,
+      typical: 5000,
       currency: "INR",
     },
     reports: 51,
