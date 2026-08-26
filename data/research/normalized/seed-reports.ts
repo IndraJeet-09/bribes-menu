@@ -555,7 +555,7 @@ export const RESEARCH_SEED_REPORTS: SeedReport[] = [
   // 21. GST registration
   {
     serviceSlug: "gst-registration",
-    amount: 15000,
+    amount: 5000,
     currency: "INR",
     paid: true,
     paymentMode: "cash",
