@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, CheckCircle2, AlertCircle, Send } from "lucide-react";
-import { SERVICES_SEED } from "@/data/services";
 import { INDIAN_STATES, PaymentMode, OfficialRole } from "@/types/report";
+
+interface Service {
+  id: string;
+  name: string;
+  slug: string;
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+}
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -12,7 +20,10 @@ interface ReportModalProps {
 }
 
 export function ReportModal({ isOpen, onClose, defaultServiceId }: ReportModalProps) {
-  const [serviceId, setServiceId] = useState(defaultServiceId || SERVICES_SEED[0].id);
+  const [services, setServices] = useState<Service[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  
+  const [serviceId, setServiceId] = useState(defaultServiceId || "");
   const [amount, setAmount] = useState<string>("");
   const [paid, setPaid] = useState<boolean>(true);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("cash");
@@ -30,7 +41,43 @@ export function ReportModal({ isOpen, onClose, defaultServiceId }: ReportModalPr
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Fetch services from database
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await fetch("/api/services");
+        const data = await res.json();
+        if (data.success && data.services) {
+          setServices(data.services);
+          if (defaultServiceId) {
+            setServiceId(defaultServiceId);
+          } else if (data.services.length > 0) {
+            setServiceId(data.services[0].id);
+          }
+        }
+      } catch {
+        // Fallback handled by servicesLoading state
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+    fetchServices();
+  }, [defaultServiceId]);
+
   if (!isOpen) return null;
+
+  if (servicesLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+        <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-2xl">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4" />
+            <p className="font-mono text-xs text-muted">Loading services...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +191,7 @@ export function ReportModal({ isOpen, onClose, defaultServiceId }: ReportModalPr
                 onChange={(e) => setServiceId(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground font-sans text-sm focus:outline-none focus:border-foreground"
               >
-                {SERVICES_SEED.map((s) => (
+                {services.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
