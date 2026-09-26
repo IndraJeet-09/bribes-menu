@@ -139,6 +139,7 @@ function BrowseContent() {
           showPopularSearches={false}
           placeholder="Filter directory by offence, keywords, or context..."
           enrichedMap={enrichedMap}
+          enrichedOffences={enriched}
           isLoading={isLoading}
           error={error}
         />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, ArrowUpRight, CornerDownLeft } from "lucide-react";
 import { Offence } from "@/types/offence";
@@ -18,6 +18,7 @@ interface SearchBarProps {
   autoFocus?: boolean;
   placeholder?: string;
   enrichedMap?: Map<string, EnrichedOffence>;
+  enrichedOffences?: EnrichedOffence[];
   isLoading?: boolean;
   error?: string | null;
 }
@@ -30,6 +31,7 @@ export function SearchBar({
   autoFocus = false,
   placeholder = "Search an offence, violation or situation (e.g. helmet, licence, tax, speed)...",
   enrichedMap,
+  enrichedOffences,
   isLoading,
   error,
 }: SearchBarProps) {
@@ -41,15 +43,23 @@ export function SearchBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Build searchable array from enrichedOffences or fallback to OFFENCES
+  const searchableOffences = useMemo(() => {
+    if (enrichedOffences && enrichedOffences.length > 0) {
+      return enrichedOffences;
+    }
+    return OFFENCES;
+  }, [enrichedOffences]);
+
   useEffect(() => {
     if (initialQuery !== undefined) {
       setQuery(initialQuery);
       if (initialQuery.trim()) {
-        const matches = searchOffences(OFFENCES, initialQuery);
+        const matches = searchOffences(searchableOffences, initialQuery);
         setResults(matches);
       }
     }
-  }, [initialQuery]);
+  }, [initialQuery, searchableOffences]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -57,20 +67,20 @@ export function SearchBar({
     setSelectedIndex(-1);
 
     if (val.trim()) {
-      const matches = searchOffences(OFFENCES, val);
+      const matches = searchOffences(searchableOffences, val);
       setResults(matches);
       setIsOpen(true);
       onSearchChange?.(val, matches);
     } else {
       setResults([]);
       setIsOpen(false);
-      onSearchChange?.("", OFFENCES);
+      onSearchChange?.("", searchableOffences);
     }
   };
 
   const handleSelectPopular = (term: string) => {
     setQuery(term);
-    const matches = searchOffences(OFFENCES, term);
+    const matches = searchOffences(searchableOffences, term);
     setResults(matches);
     setIsOpen(true);
     inputRef.current?.focus();

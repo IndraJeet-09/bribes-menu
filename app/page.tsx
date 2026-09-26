@@ -91,6 +91,7 @@ export default function HomePage() {
             showDropdown={true}
             showPopularSearches={true}
             enrichedMap={enrichedMap}
+            enrichedOffences={enriched}
             isLoading={isLoading}
             error={error}
           />
