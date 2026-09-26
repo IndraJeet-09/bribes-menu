@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 interface PopularSearchesProps {
   onSelect: (query: string) => void;
 }
 
-const POPULAR_ITEMS = [
+const FALLBACK_ITEMS = [
   "No helmet",
   "No licence",
   "Police verification",
@@ -16,12 +18,45 @@ const POPULAR_ITEMS = [
 ];
 
 export function PopularSearches({ onSelect }: PopularSearchesProps) {
+  const [popularItems, setPopularItems] = useState<string[]>(FALLBACK_ITEMS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPopularSearches = async () => {
+      try {
+        const res = await fetch("/api/popular-searches");
+        const data = await res.json();
+        if (data.success && data.popularSearches) {
+          setPopularItems(data.popularSearches);
+        }
+      } catch {
+        // Keep fallback items
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPopularSearches();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 pt-3">
+        <span className="font-mono text-[11px] uppercase tracking-wider text-muted font-medium mr-1">
+          POPULAR SEARCHES:
+        </span>
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="animate-pulse h-6 w-20 rounded border border-border bg-neutral-100" />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2 pt-3">
       <span className="font-mono text-[11px] uppercase tracking-wider text-muted font-medium mr-1">
         POPULAR SEARCHES:
       </span>
-      {POPULAR_ITEMS.map((item) => (
+      {popularItems.map((item) => (
         <button
           key={item}
           type="button"
