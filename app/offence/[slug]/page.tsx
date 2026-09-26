@@ -7,7 +7,7 @@ import { AmountVisualizer } from "@/components/AmountVisualizer";
 import { ShareButton } from "@/components/ShareButton";
 import { OffenceCard } from "@/components/OffenceCard";
 import { ReportCTA } from "@/components/ReportCTA";
-import { getServiceSlugForOffence } from "@/lib/data/service-mapping";
+import { getServiceSlugForOffence, getOffenceSlugForService } from "@/lib/data/service-mapping";
 import { fetchServiceDbData, fetchRelatedServicesDbData } from "@/lib/data/server-data";
 import {
   ArrowLeft,
@@ -80,26 +80,31 @@ export default async function OffenceDetailPage({ params }: Props) {
     ? await fetchRelatedServicesDbData(dbData?.service.categorySlug ?? "", serviceSlug, 3)
     : [];
 
-  const relatedOffences = relatedServices.map((svc) => ({
-    id: svc.service.id,
-    slug: svc.service.slug,
-    title: svc.service.name,
-    category: svc.service.categorySlug as "traffic" | "vehicle" | "documents" | "government" | "tax" | "business" | "police" | "municipal",
-    description: `Reported typical amount of ${formatINR(svc.stats.typical)} for ${svc.service.name}.`,
-    humorousQuote: "Data from community reports",
-    aliases: [],
-    keywords: [],
-    reportedAmount: {
-      min: svc.stats.min,
-      max: svc.stats.max,
-      typical: svc.stats.typical,
-      currency: "INR" as const,
-    },
-    reports: svc.stats.reportCount,
-    confidence: svc.stats.confidence as "low" | "medium" | "high",
-    location: [],
-    lastUpdated: new Date().toISOString(),
-  }));
+  const relatedOffences = relatedServices.map((svc) => {
+    const offenceSlug = getOffenceSlugForService(svc.service.slug) ?? svc.service.slug;
+    const matchingOffence = OFFENCES.find((o) => o.slug === offenceSlug);
+    
+    return {
+      id: svc.service.id,
+      slug: offenceSlug,
+      title: matchingOffence?.title ?? svc.service.name,
+      category: matchingOffence?.category ?? (svc.service.categorySlug as "traffic" | "vehicle" | "documents" | "government" | "tax" | "business" | "police" | "municipal"),
+      description: matchingOffence?.description ?? `Reported typical amount of ${formatINR(svc.stats.typical)} for ${svc.service.name}.`,
+      humorousQuote: matchingOffence?.humorousQuote ?? "Data from community reports",
+      aliases: matchingOffence?.aliases ?? [],
+      keywords: matchingOffence?.keywords ?? [],
+      reportedAmount: {
+        min: svc.stats.min,
+        max: svc.stats.max,
+        typical: svc.stats.typical,
+        currency: "INR" as const,
+      },
+      reports: svc.stats.reportCount,
+      confidence: svc.stats.confidence as "low" | "medium" | "high",
+      location: matchingOffence?.location ?? [],
+      lastUpdated: matchingOffence?.lastUpdated ?? new Date().toISOString(),
+    };
+  });
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8 sm:py-14 space-y-10">
