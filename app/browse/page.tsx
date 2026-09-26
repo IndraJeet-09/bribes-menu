@@ -40,13 +40,16 @@ function BrowseContent() {
     setSelectedCategory(cat);
   }, [searchParams]);
 
+  // Calculate category counts from enriched (DB-backed) data
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const offence of OFFENCES) {
+    for (const offence of enriched) {
       counts[offence.category] = (counts[offence.category] || 0) + 1;
     }
     return counts;
-  }, []);
+  }, [enriched]);
+
+  const totalEnrichedCount = enriched.length;
 
   const processedOffences = useMemo(() => {
     let list = [...enriched];
@@ -123,7 +126,7 @@ function BrowseContent() {
           Browse All Reported Situations
         </h1>
         <p className="font-sans text-sm sm:text-base text-muted max-w-2xl">
-          Search across {OFFENCES.length} documented offences, administrative bottlenecks, and roadside encounters with reported crowd estimates.
+          Search across {totalEnrichedCount} documented offences, administrative bottlenecks, and roadside encounters with reported crowd estimates.
         </p>
       </div>
 
@@ -154,7 +157,7 @@ function BrowseContent() {
                 : "bg-surface text-muted border-border hover:text-foreground"
             }`}
           >
-            ALL ({OFFENCES.length})
+            ALL ({totalEnrichedCount})
           </button>
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat.id;
@@ -208,14 +211,14 @@ function BrowseContent() {
         </div>
       </div>
 
-      {/* Results Count Bar */}
+{/* Results Count Bar */}
       <div className="flex items-center justify-between font-mono text-xs text-muted border-b border-border/60 pb-3">
         <span>
-          SHOWING {processedOffences.length} OF {OFFENCES.length} SITUATIONS
+          SHOWING {processedOffences.length} OF {totalEnrichedCount} SITUATIONS
         </span>
         {query && (
           <span>
-            MATCHING QUERY: <strong className="text-foreground">&quot;{query}&quot;</strong>
+            MATCHING QUERY: <strong className="text-foreground">"{query}"</strong>
           </span>
         )}
       </div>
