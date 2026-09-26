@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { reports, services, categories, initialEstimates } from "@/lib/db/schema";
 import { calculateReportStats } from "@/lib/aggregation/reports";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 export interface ServiceDbData {
   service: {
@@ -105,6 +105,111 @@ export async function fetchServiceDbData(
     };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Fetch related services from the database for a given category.
+ * Returns services in the same category (excluding the current service).
+ */
+export async function fetchRelatedServicesDbData(
+  categorySlug: string,
+  excludeServiceSlug: string,
+  limit: number = 3
+): Promise<ServiceDbData[]> {
+  try {
+    const serviceRows = await db
+      .select({
+        id: services.id,
+        name: services.name,
+        slug: services.slug,
+        categoryId: services.categoryId,
+        categoryName: categories.name,
+        categorySlug: categories.slug,
+      })
+      .from(services)
+      .innerJoin(categories, eq(services.categoryId, categories.id))
+      .where(
+        and(
+          eq(categories.slug, categorySlug),
+          eq(services.active, true)
+        )
+      );
+
+    const filteredServices = serviceRows.filter(
+      (s) => s.slug !== excludeServiceSlug
+    ).slice(0, limit);
+
+    if (filteredServices.length === 0) {
+      return [];
+    }
+
+    const serviceIds = filteredServices.map((s) => s.id);
+
+    const estimateRows = await db
+      .select()
+      .from(initialEstimates)
+      .where(inArray(initialEstimates.serviceId, serviceIds));
+
+    const estimateByServiceId = new Map(
+      estimateRows.map((e) => [e.serviceId, e])
+    );
+
+    const dbReports = await db
+      .select()
+      .from(reports)
+      .where(
+        and(
+          eq(reports.status, "approved"),
+          inArray(reports.serviceId, serviceIds)
+        )
+      );
+
+    const reportsByServiceId = new Map<string, typeof dbReports>();
+    for (const r of dbReports) {
+      const existing = reportsByServiceId.get(r.serviceId) || [];
+      existing.push(r);
+      reportsByServiceId.set(r.serviceId, existing);
+    }
+
+    const relatedData: ServiceDbData[] = [];
+
+    for (const svc of filteredServices) {
+      const initialEstimate = estimateByServiceId.get(svc.id) || null;
+      const serviceReports = reportsByServiceId.get(svc.id) || [];
+      const numericAmounts = serviceReports.map((r) => parseFloat(r.amount));
+      const reportStats = calculateReportStats(numericAmounts);
+      const stats = mergeEstimate(initialEstimate, reportStats);
+
+      relatedData.push({
+        service: {
+          id: svc.id,
+          name: svc.name,
+          slug: svc.slug,
+          categorySlug: svc.categorySlug,
+          categoryName: svc.categoryName,
+        },
+        initialEstimate: initialEstimate
+          ? {
+              amount: parseFloat(String(initialEstimate.amount)),
+              minAmount: initialEstimate.minAmount
+                ? parseFloat(String(initialEstimate.minAmount))
+                : null,
+              maxAmount: initialEstimate.maxAmount
+                ? parseFloat(String(initialEstimate.maxAmount))
+                : null,
+              methodology: initialEstimate.methodology,
+              confidence: initialEstimate.confidence,
+              observationCount: Number(initialEstimate.observationCount),
+            }
+          : null,
+        stats,
+      });
+    }
+
+    return relatedData;
+  } catch {
+    return [];
   }
 }
 
