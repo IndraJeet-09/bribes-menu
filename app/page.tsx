@@ -28,11 +28,13 @@ export default function HomePage() {
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const offence of OFFENCES) {
+    for (const offence of enriched) {
       counts[offence.category] = (counts[offence.category] || 0) + 1;
     }
     return counts;
-  }, []);
+  }, [enriched]);
+
+  const totalEnrichedCount = enriched.length;
 
   const filteredOffences = useMemo(() => {
     let list: Offence[] = enriched;
@@ -95,7 +97,7 @@ export default function HomePage() {
         </div>
 
         <p className="font-mono text-xs text-muted pt-1">
-          {OFFENCES.length} things you probably shouldn&apos;t have done.
+          {totalEnrichedCount} things you probably shouldn&apos;t have done.
         </p>
       </div>
 
